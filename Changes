@@ -1,5 +1,10 @@
 Revision history for Statistics-Approx-Bucket
 
+0.02    Mon Jun 10 2013
+	API count, mean, and standard deviation added.
+	DOC a brief description and aknowledgements added.
+
 0.01    Mon Jun 10 2013
         First version, released on an unsuspecting world.
+	API percentile and add_data added.
 

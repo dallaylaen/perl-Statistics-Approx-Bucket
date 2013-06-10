@@ -15,12 +15,19 @@ Version 0.01
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = 0.02;
 
 =head1 SYNOPSIS
 
     use Statistics::Approx::Bucket;
     my $stat = Statistics::Approx::Bucket->new (floor => 1E-6, );
+
+=head1 DESCRIPTION
+
+This module aims at providing some advanced statistical functions without
+storing all data in memory, at the cost of introducing fixed relative error.
+
+Data is represented by a set of logarithmic buckets only storing counters.
 
 =head1 METHODS
 
@@ -29,7 +36,7 @@ our $VERSION = '0.01';
 use fields qw(
 	pos neg zero
 	base logbase floor logfloor
-	total
+	count
 );
 
 =head2 new
@@ -40,11 +47,12 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	#
+	# TODO handle %opt somehow
 
 	my $self = fields::new($class);
 	$self->{neg} = [];
 	$self->{pos} = [];
+	$self->{count} = 0;
 	$self->{$_} = $opt{$_}
 		for qw(base floor);
 	$self->{logbase} = log $opt{base};
@@ -53,7 +61,9 @@ sub new {
 }
 
 
-=head2 add_data
+=head2 add_data( @data )
+
+Add numbers to the data pool.
 
 =cut
 
@@ -72,11 +82,99 @@ sub add_data {
 		} else {
 			$self->{$store}[$idx]++;
 		};
-		$self->{total}++;
+		$self->{count}++;
 	};
 };
 
-=head2 percentile
+=head2 count
+
+Return number of data points.
+
+=cut
+
+sub count {
+	my $self = shift;
+	return $self->{count};
+};
+
+=head2 sum()
+
+Return sum of all data points.
+
+=cut
+
+sub sum {
+	my $self = shift;
+	return $self->sum_func(sub { $_[0] });
+};
+
+=head2 sumsq()
+
+Return sum of squares of all datapoints.
+
+=cut
+
+sub sumsq {
+	my $self = shift;
+	return $self->sum_func(sub { $_[0] * $_[0] });
+};
+
+=head2 mean()
+
+Return mean, which is sum()/count().
+
+=cut
+
+sub mean {
+	my $self = shift;
+	return $self->{count} ? $self->sum / $self->{count} : undef;
+};
+
+=head2 variance()
+
+Return data variance.
+
+=cut
+
+sub variance {
+	my $self = shift;
+
+	# This part is stolen from Statistics::Descriptive
+	my $div = @_ ? 0 : 1;
+	if ($self->{count} < 1 + $div) {
+		return 0;
+	}
+
+	my $var = $self->sumsq - $self->sum**2 / $self->{count};
+	return $var < 0 ? 0 : $var / ( $self->{count} - $div );
+};
+
+=head2 standard_deviation()
+
+=head2 std_dev()
+
+Return standard deviation.
+
+=cut
+
+sub standard_deviation {
+	# This part is stolen from Statistics::Descriptive
+	my $self = shift;
+	return if (!$self->count());
+	return sqrt($self->variance());
+};
+
+{
+	no warnings 'once'; ## no critic
+	*std_dev = \&standard_deviation;
+};
+
+=head2 percentile( $n )
+
+Find $n-th percentile, i.e. a value below which lies $n % of the data.
+
+0-th percentile is by definition -inf and is returned as undef
+(see Statistics::Descriptive).
 
 =cut
 
@@ -86,7 +184,8 @@ sub percentile {
 
 	# assert 0<=$x<=100
 
-	my $need = $x * $self->{total} / 100;
+	my $need = $x * $self->{count} / 100;
+	return if $need < 1;
 	my $sum = 0;
 	for (my $i = @{ $self->{neg} }; $i-->0; ) {
 		next unless $self->{neg}[$i];
@@ -103,6 +202,32 @@ sub percentile {
 		return $self->_power($i+1) if $sum >= $need;
 	};
 	die "Control never reaches here";
+};
+
+=head2 sum_func( $code )
+
+Return sum of $code->($_) across all data. $code is expected to have no side
+effects and only depend on its input.
+
+=cut
+
+sub sum_func {
+	my $self = shift;
+	my ($code, $min, $max) = @_;
+
+	my $sum = 0;
+	for (my $i = @{ $self->{neg} }; $i-->0; ) {
+		next unless $self->{neg}[$i];
+		$sum += $self->{neg}[$i] * $code->( $self->_power(-1-$i) );
+	};
+	if ($self->{zero}) {
+		$sum += $self->{zero} * $code->( $self->_power(0) );
+	};
+	for (my $i = 0; $i < @{ $self->{pos} }; $i++ ) {
+		next unless $self->{pos}[$i];
+		$sum += $self->{pos}[$i] * $code->( $self->_power(+1+$i) );
+	};
+	return $sum;
 };
 
 sub _power {
@@ -160,6 +285,11 @@ L<http://search.cpan.org/dist/Statistics-Approx-Bucket/>
 
 =head1 ACKNOWLEDGEMENTS
 
+This module was inspired by a talk that Andrew Aksyonoff, author of Sphinx
+search software, has given at HighLoad conference in Moscow, 2012.
+
+L<Statistics::Descriptive> was and is used as reference when in doubt.
+Several code snippets were shamelessly stolen from there.
 
 =head1 LICENSE AND COPYRIGHT
 
