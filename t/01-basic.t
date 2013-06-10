@@ -6,7 +6,8 @@ use Data::Dumper;
 
 use Statistics::Approx::Bucket;
 
-my @samples = ([1..100], [-100..-1], [-10..12]);
+my @samples = ([1..100], [-100..-1], [-10..12],
+	[map { $_ / 10 } -15..35 ]);
 plan tests => 12 * @samples;
 
 foreach (@samples) {
