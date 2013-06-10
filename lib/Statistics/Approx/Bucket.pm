@@ -15,7 +15,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.02;
+our $VERSION = 0.0201;
 
 =head1 SYNOPSIS
 
@@ -39,7 +39,17 @@ use fields qw(
 	count
 );
 
-=head2 new
+=head2 new( %options )
+
+%options must include:
+
+=over
+
+=item * floor - values with absolute value less than this are considered zero;
+
+=item * base - ratio of adjacent buckets.
+
+=back
 
 =cut
 
@@ -50,16 +60,28 @@ sub new {
 	# TODO handle %opt somehow
 
 	my $self = fields::new($class);
-	$self->{neg} = [];
-	$self->{pos} = [];
-	$self->{count} = 0;
 	$self->{$_} = $opt{$_}
 		for qw(base floor);
 	$self->{logbase} = log $opt{base};
 	$self->{logfloor} = log $opt{floor};
+	$self->clear;
 	return $self;
-}
+};
 
+=head2 clear()
+
+Destroy all stored data.
+
+=cut
+
+sub clear {
+	my $self = shift;
+	$self->{neg} = [];
+	$self->{zero} = 0;
+	$self->{pos} = [];
+	$self->{count} = 0;
+	return $self;
+};
 
 =head2 add_data( @data )
 
@@ -70,19 +92,22 @@ Add numbers to the data pool.
 sub add_data {
 	my $self = shift;
 	foreach my $x (@_) {
-		my $store = "pos";
-		if ($x < 0) {
-			$store = "neg";
-			$x = -$x;
+		$self->{count}++;
+
+		if ($x == 0) {
+			$self->{zero}++;
+			next;
 		};
+
+		my $store = ($x > 0) ? "pos" : "neg";
 		my $idx = int (
-			(log $x - $self->{logfloor}) / $self->{logbase} + 0.5);
+			(log abs($x) - $self->{logfloor})
+			/ $self->{logbase} + 0.5);
 		if ($idx < 0) {
 			$self->{zero}++;
 		} else {
 			$self->{$store}[$idx]++;
 		};
-		$self->{count}++;
 	};
 };
 
@@ -167,6 +192,47 @@ sub standard_deviation {
 {
 	no warnings 'once'; ## no critic
 	*std_dev = \&standard_deviation;
+};
+
+=head2 min()
+
+=head2 max()
+
+Values of minimal and maximal buckets.
+
+=cut
+
+sub min {
+	my $self = shift;
+	for ( my $i = @{ $self->{neg} }; $i-->0; ) {
+		$self->{neg}[$i] and return $self->_power(-1-$i);
+	};
+	$self->{zero} and return 0;
+	for ( my $i = 0; $i<@{ $self->{pos} }; $i++ ) {
+		$self->{pos}[$i] and return $self->_power(+1+$i);
+	};
+};
+
+sub max {
+	my $self = shift;
+	for ( my $i = @{ $self->{pos} }; $i-->0; ) {
+		$self->{pos}[$i] and return $self->_power(+1+$i);
+	};
+	$self->{zero} and return 0;
+	for ( my $i = 0; $i<@{ $self->{neg} }; $i++ ) {
+		$self->{neg}[$i] and return $self->_power(-1-$i);
+	};
+};
+
+=head2 sample_range()
+
+Return sample range of the dataset, i.e. max() - min().
+
+=cut
+
+sub sample_range {
+	my $self = shift;
+	return $self->max - $self->min;
 };
 
 =head2 percentile( $n )
