@@ -15,7 +15,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.0201;
+our $VERSION = 0.0202;
 
 =head1 SYNOPSIS
 
@@ -351,8 +351,9 @@ L<http://search.cpan.org/dist/Statistics-Approx-Bucket/>
 
 =head1 ACKNOWLEDGEMENTS
 
-This module was inspired by a talk that Andrew Aksyonoff, author of Sphinx
-search software, has given at HighLoad conference in Moscow, 2012.
+This module was inspired by a talk that Andrew Aksyonoff, author of
+L<Sphinx search software|http://sphinxsearch.com/>,
+has given at HighLoad++ conference in Moscow, 2012.
 
 L<Statistics::Descriptive> was and is used as reference when in doubt.
 Several code snippets were shamelessly stolen from there.
