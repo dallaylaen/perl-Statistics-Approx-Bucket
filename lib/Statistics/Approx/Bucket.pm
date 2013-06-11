@@ -15,7 +15,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = 0.0202;
+our $VERSION = 0.0203;
 
 =head1 SYNOPSIS
 
@@ -94,21 +94,49 @@ sub add_data {
 	foreach my $x (@_) {
 		$self->{count}++;
 
-		if ($x == 0) {
-			$self->{zero}++;
-			next;
-		};
-
-		my $store = ($x > 0) ? "pos" : "neg";
-		my $idx = int (
-			(log abs($x) - $self->{logfloor})
-			/ $self->{logbase} + 0.5);
-		if ($idx < 0) {
-			$self->{zero}++;
-		} else {
-			$self->{$store}[$idx]++;
-		};
+		my $bucket = $self->_bucket($x);
+		$$bucket++;
 	};
+};
+
+=head2 add_data_hash
+
+=cut
+
+sub add_data_hash {
+	my $self = shift;
+	my $hash = shift;
+
+	foreach (keys %$hash) {
+		my $bucket = $self->_bucket( $_ );
+		$$bucket += $hash->{$_};
+		$self->{count} += $hash->{$_};
+	};
+};
+
+=head2 get_data_hash()
+
+Return distribution hashref {value => number of occurances}.
+
+=cut
+
+sub get_data_hash {
+	my $self = shift;
+
+	my $hash = {};
+	for (my $i = @{ $self->{neg} }; $i-->0; ) {
+		next unless $self->{neg}[$i];
+		$hash->{ $self->_power(-1-$i) } = $self->{neg}[$i];
+	};
+	if ($self->{zero}) {
+		$hash->{ 0 } = $self->{zero};
+	};
+	for (my $i = 0; $i < @{ $self->{pos} }; $i++ ) {
+		next unless $self->{pos}[$i];
+		$hash->{ $self->_power(+1+$i) } = $self->{pos}[$i];
+	};
+	return $hash;
+
 };
 
 =head2 count
@@ -189,7 +217,7 @@ sub standard_deviation {
 	return sqrt($self->variance());
 };
 
-{
+BEGIN {
 	no warnings 'once'; ## no critic
 	*std_dev = \&standard_deviation;
 };
@@ -279,7 +307,7 @@ effects and only depend on its input.
 
 sub sum_func {
 	my $self = shift;
-	my ($code, $min, $max) = @_;
+	my ($code) = @_;
 
 	my $sum = 0;
 	for (my $i = @{ $self->{neg} }; $i-->0; ) {
@@ -304,6 +332,34 @@ sub _power {
 	my $sign = $i > 0 ? 1 : -1;
 	$i = abs($i)-1;
 	return $sign * exp ($self->{logfloor} + $self->{logbase} * $i);
+};
+
+# reverse of power.
+sub _index {
+	my $self = shift;
+	my $x = shift;
+
+	if (abs($x) < $self->{floor}) {
+		return 0;
+	};
+
+	my $i = (log abs($x) - $self->{logfloor}) / $self->{logbase};
+	$i = int($i + 1.5); # +0.5: rounding; +1: index(floor) = 1, not 0
+	return $x < 0 ? -$i : $i;
+};
+
+sub _bucket {
+	my $self = shift;
+	my $x = shift;
+
+	if (abs($x) < $self->{floor}) {
+		return \($self->{zero});
+	};
+
+	my $i = (log abs($x) - $self->{logfloor}) / $self->{logbase};
+	$i = int($i + 0.5);
+	my $store = $x < 0 ? "neg" : "pos";
+	return \( $self->{$store}[$i] );
 };
 
 =head1 AUTHOR
