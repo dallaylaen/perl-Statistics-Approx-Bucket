@@ -11,11 +11,11 @@ using logarithmic buckets to store data.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = 0.0203;
+our $VERSION = 0.0204;
 
 =head1 SYNOPSIS
 
@@ -32,6 +32,8 @@ Data is represented by a set of logarithmic buckets only storing counters.
 =head1 METHODS
 
 =cut
+
+use Carp;
 
 use fields qw(
 	pos neg zero
@@ -277,6 +279,8 @@ sub percentile {
 	my $x = shift;
 
 	# assert 0<=$x<=100
+	croak __PACKAGE__.": percentile() argument must be between 0 and 100"
+		unless 0<= $x and $x <= 100;
 
 	my $need = $x * $self->{count} / 100;
 	return if $need < 1;
@@ -296,6 +300,40 @@ sub percentile {
 		return $self->_power($i+1) if $sum >= $need;
 	};
 	die "Control never reaches here";
+};
+
+=head2 quantile( 0..4 )
+
+From Statistics::Descriptive manual:
+
+  0 => zero quartile (Q0) : minimal value
+  1 => first quartile (Q1) : lower quartile = lowest cut off (25%) of data = 25th percentile
+  2 => second quartile (Q2) : median = it cuts data set in half = 50th percentile
+  3 => third quartile (Q3) : upper quartile = highest cut off (25%) of data, or lowest 75% = 75th percentile
+  4 => fourth quartile (Q4) : maximal value
+
+=cut
+
+sub quantile {
+	my $self = shift;
+	my $t = shift;
+
+	croak (__PACKAGE__.": quantile() argument must be one of 0..4")
+		unless $t =~ /^[0-4]$/;
+
+	$t or return $self->min;
+	return $self->percentile($t * 100 / 4);
+};
+
+=head2 median()
+
+Returns median of data. Same as percentile(50).
+
+=cut
+
+sub median {
+	my $self = shift;
+	return $self->percentile(50);
 };
 
 =head2 sum_func( $code )
