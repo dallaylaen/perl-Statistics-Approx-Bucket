@@ -15,7 +15,7 @@ Version 0.02
 
 =cut
 
-our $VERSION = 0.0205;
+our $VERSION = 0.0206;
 
 =head1 SYNOPSIS
 
@@ -25,9 +25,13 @@ our $VERSION = 0.0205;
 =head1 DESCRIPTION
 
 This module aims at providing some advanced statistical functions without
-storing all data in memory, at the cost of introducing fixed relative error.
+storing all data in memory, at the cost of some precision loss.
 
 Data is represented by a set of logarithmic buckets only storing counters.
+Data with absolute value below certain threshold ("floor") is stored in a
+special zero counter.
+All operations are performed on the buckets, introducing relative error
+which does not however exceed the buckets' width ("base").
 
 =head1 METHODS
 
@@ -479,12 +483,20 @@ Konstantin S. Uvarin, C<< <khedin at gmail.com> >>
 
 =head1 BUGS
 
+The module is currently in alpha stage.
+
+Behaviour around zero is inconsistent.
+
+Performance is neglected.
+
+Test suite is still sparse, leaving room for more stupid bugs.
+
+Adding linear interpolation could result in precision gains at little
+performance cost.
+
 Please report any bugs or feature requests to C<bug-statistics-approx-bucket at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Statistics-Approx-Bucket>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 
@@ -496,6 +508,10 @@ You can find documentation for this module with the perldoc command.
 You can also look for information at:
 
 =over 4
+
+=item * GitHub:
+
+L<https://github.com/dallaylaen/perl-Statistics-Approx-Bucket>
 
 =item * RT: CPAN's request tracker (report bugs here)
 
