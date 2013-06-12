@@ -15,7 +15,7 @@ Version 0.02
 
 =cut
 
-our $VERSION = 0.0204;
+our $VERSION = 0.0205;
 
 =head1 SYNOPSIS
 
@@ -327,13 +327,86 @@ sub quantile {
 
 =head2 median()
 
-Returns median of data. Same as percentile(50).
+Return median of data, a value that divides the sample in half.
+Same as percentile(50).
 
 =cut
 
 sub median {
 	my $self = shift;
 	return $self->percentile(50);
+};
+
+=head2 harmonic_mean()
+
+Return harmonic mean of the data, i.e. 1/E(1/x).
+
+Return undef if division by zero occurs (see Statistics::Descriptive).
+
+=cut
+
+sub harmonic_mean {
+	my $self = shift;
+
+	my $ret;
+	eval {
+		$ret = $self->count / $self->sum_func(sub { 1/$_[0] });
+	};
+	if ($@ and $@ !~ /division.*zero/) {
+		die $@; # rethrow
+	};
+	return $ret;
+};
+
+=head2 geometric_mean()
+
+Return geometric mean of the data, that is, exp(E(log x)).
+
+Dies unless all data points are of the same sign.
+
+=cut
+
+sub geometric_mean {
+	my $self = shift;
+
+	croak __PACKAGE__.": geometric_mean() called on mixed sign sample"
+		if $self->min * $self->max < 0;
+
+	return 0 if $self->{zero};
+	# this must be dog slow, but we already log() too much at this point.
+	my $ret = exp( $self->sum_func( sub { log abs $_[0] } ) / $self->{count} );
+	return $self->min < 0 ? -$ret : $ret;
+};
+
+=head2 central_moment( $n )
+
+Return $n-th central moment, that is, E((x - E(x))^$n).
+
+=cut
+
+sub central_moment {
+	my $self = shift;
+	my $n = shift;
+
+	my $mean = $self->mean;
+	return $self->sum_func(sub{ ($_[0] - $mean) ** $n }) / $self->{count};
+};
+
+=head2 std_moment( $n )
+
+Return $n-th standardized moment, that is,
+E((x - E(x))**$n) / std_dev(x)**$n.
+
+=cut
+
+sub std_moment {
+	my $self = shift;
+	my $n = shift;
+
+	my $mean = $self->mean;
+	my $dev = $self->std_dev;
+	return $self->sum_func(sub{ ($_[0] - $mean) ** $n })
+		/ ( $dev**$n * $self->{count} );
 };
 
 =head2 sum_func( $code )
@@ -394,7 +467,7 @@ sub _bucket {
 		return \($self->{zero});
 	};
 
-	my $i = (log abs($x) - $self->{logfloor}) / $self->{logbase};
+	my $i = ((log abs $x) - $self->{logfloor}) / $self->{logbase};
 	$i = int($i + 0.5);
 	my $store = $x < 0 ? "neg" : "pos";
 	return \( $self->{$store}[$i] );

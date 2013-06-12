@@ -11,3 +11,4 @@ t/pod.t
 t/boilerplate.t
 t/02-private.t
 t/03-precise.t
+t/04-exact-additional.t

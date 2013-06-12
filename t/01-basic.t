@@ -8,7 +8,7 @@ use Statistics::Approx::Bucket;
 
 my @samples = ([1..100], [-100..-1], [-10..12],
 	[map { $_ / 10 } -15..35 ]);
-plan tests => 12 * @samples;
+plan tests => 14 * @samples;
 
 foreach (@samples) {
 	my @data = @$_;
@@ -27,6 +27,9 @@ foreach (@samples) {
 		"max value = 100th centile (exact)");
 	about ($stat->min, $data[0], "min = data[0]");
 	about ($stat->sample_range, $data[-1] - $data[0], "sample range");
+
+	about ($stat->central_moment(2), $stat->variance, "2nd moment = variance");
+	about ($stat->std_moment(2), 1, "2nd normalized = 1");
 
 	# ad-hoc basic statistics
 	my $n;  $n  += 1     for @data;
