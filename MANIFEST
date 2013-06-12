@@ -5,10 +5,10 @@ MANIFEST			This list of files
 README
 t/00-load.t
 t/01-basic.t
-t/manifest.t
-t/pod-coverage.t
-t/pod.t
-t/boilerplate.t
+xt/manifest.t
+xt/pod-coverage.t
+xt/pod.t
+xt/boilerplate.t
 t/02-private.t
 t/03-exact-basic.t
 t/04-exact-additional.t
