@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 8;
+use Test::More tests => 10;
+use Test::Exception;
 use YAML;
 
 use Statistics::Approx::Bucket;
@@ -22,3 +23,11 @@ is ($stat->quantile(1), 2, "Q1");
 is ($stat->quantile(2), 4, "Q2");
 is ($stat->quantile(3), 8, "Q3");
 is ($stat->quantile(4), 16, "Q4");
+throws_ok {
+	$stat->quantile(5)
+} qr(tics::Approx.*must), "Q5 dies";
+
+note explain $stat->{cache};
+$stat->add_data(1, 1);
+ok (!exists $stat->{cache}, "Cache deleted on add");
+

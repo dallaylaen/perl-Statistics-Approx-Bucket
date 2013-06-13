@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 14;
+use Test::More tests => 15;
 
 use Statistics::Approx::Bucket;
 
@@ -26,4 +26,8 @@ foreach my $method (qw(count mean median sumsq min max)) {
 	is ($stat2->$method, $stat->$method, "data round trip: $method");
 };
 is_deeply($stat2->get_data_hash, $hash, "data round trip: hash");
+
+note explain $stat->{cache};
+$stat->add_data(1, 1);
+ok (!exists $stat->{cache}, "Cache deleted on add");
 

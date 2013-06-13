@@ -15,7 +15,7 @@ Version 0.02
 
 =cut
 
-our $VERSION = 0.0207;
+our $VERSION = 0.0208;
 
 =head1 SYNOPSIS
 
@@ -55,6 +55,7 @@ use fields qw(
 	pos neg zero
 	base logbase floor logfloor factor
 	count
+	cache
 );
 
 =head2 new( %options )
@@ -100,6 +101,7 @@ sub clear {
 	$self->{zero} = 0;
 	$self->{pos} = [];
 	$self->{count} = 0;
+	delete $self->{cache};
 	return $self;
 };
 
@@ -111,6 +113,9 @@ Add numbers to the data pool.
 
 sub add_data {
 	my $self = shift;
+	return unless @_;
+
+	delete $self->{cache};
 	foreach my $x (@_) {
 		$self->{count}++;
 
@@ -127,6 +132,7 @@ sub add_data_hash {
 	my $self = shift;
 	my $hash = shift;
 
+	delete $self->{cache};
 	foreach (keys %$hash) {
 		my $bucket = $self->_bucket( $_ );
 		$$bucket += $hash->{$_};
@@ -235,11 +241,6 @@ sub standard_deviation {
 	my $self = shift;
 	return if (!$self->count());
 	return sqrt($self->variance());
-};
-
-BEGIN {
-	no warnings 'once'; ## no critic
-	*std_dev = \&standard_deviation;
 };
 
 =head2 min()
@@ -453,6 +454,63 @@ sub sum_func {
 	return $sum;
 };
 
+# Sorry for this black magic, but it's too hard to write //= in EVERY method
+# We'll keep methods' returned values under {cache}.
+# All setters destroy said cache altogether.
+# PLEASE replace this with a ready-made module if there's one.
+
+# Memoize all the methods w/o arguments
+foreach ( qw(sum sumsq mean min max variance standard_deviation) ) {
+	# close around these
+	my $name = $_;
+	my $orig_code = __PACKAGE__->can($name);
+	die "Error in memoizer section ($name)"
+		unless ref $orig_code eq 'CODE';
+
+	my $cached_code = sub {
+		my $self = shift;
+		if (!exists $self->{cache}{$name}) {
+			$self->{cache}{$name} = $orig_code->($self);
+		};
+		return $self->{cache}{$name};
+	};
+
+	no strict 'refs'; ## no critic
+	no warnings 'redefine'; ## no critic
+	*$name = $cached_code;
+};
+
+# Memoize methods with 1 argument
+foreach ( qw( quantile ) ) {
+	# close around these
+	my $name = $_;
+	my $orig_code = __PACKAGE__->can($name);
+	die "Error in memoizer section ($name)"
+		unless ref $orig_code eq 'CODE';
+
+	my $cached_code = sub {
+		my $self = shift;
+		my $arg = shift;
+		$arg = '' unless defined $arg;
+
+		if (!exists $self->{cache}{"$name:$arg"}) {
+			$self->{cache}{"$name:$arg"} = $orig_code->($self, $arg);
+		};
+		return $self->{cache}{"$name:$arg"};
+	};
+
+	no strict 'refs'; ## no critic
+	no warnings 'redefine'; ## no critic
+	*$name = $cached_code;
+};
+
+# add shorter alias of standard_deviation (this must happen AFTER memoization)
+{
+	no warnings 'once'; ## no critic
+	*std_dev = \&standard_deviation;
+};
+
+# Some private functions: value <=> bucket.
 sub _power {
 	my $self = shift;
 	my $i = shift;
