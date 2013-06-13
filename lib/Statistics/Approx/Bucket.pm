@@ -15,7 +15,7 @@ Version 0.02
 
 =cut
 
-our $VERSION = 0.0206;
+our $VERSION = 0.0207;
 
 =head1 SYNOPSIS
 
@@ -37,11 +37,23 @@ which does not however exceed the buckets' width ("base").
 
 =cut
 
+########################################################################
+#  == HOW IT WORKS ==
+#  Buckets are stored in arrays {neg} and {pos}, and special value {zero}
+#  {base} is bucket width, {logbase} == log {base} (cache)
+#  {floor} is value below which everything is zero, {logfloor} == log {floor}
+#  {factor} is ({floor} + {floor}*{base}) / 2 == center of first bucket
+#  So every number is approximated as $x = {factor} * {base} ** $i
+#    where $i is the number of bucket.
+#  Number of bucket OTOH is $i = int ( log abs $x - {logfloor} / {logbase} )
+#  Nearly all meaningful subs have to scan all the buckets, which is bad,
+#     but anyway better than scanning full sample.
+
 use Carp;
 
 use fields qw(
 	pos neg zero
-	base logbase floor logfloor
+	base logbase floor logfloor factor
 	count
 );
 
@@ -64,10 +76,12 @@ sub new {
 	my %opt = @_;
 
 	# TODO handle %opt somehow
+	$opt{factor} = $opt{floor};
+	$opt{floor} *= 2/(1+$opt{base});
 
 	my $self = fields::new($class);
 	$self->{$_} = $opt{$_}
-		for qw(base floor);
+		for qw(base floor factor);
 	$self->{logbase} = log $opt{base};
 	$self->{logfloor} = log $opt{floor};
 	$self->clear;
@@ -446,7 +460,7 @@ sub _power {
 	return 0 if $i == 0;
 	my $sign = $i > 0 ? 1 : -1;
 	$i = abs($i)-1;
-	return $sign * exp ($self->{logfloor} + $self->{logbase} * $i);
+	return $sign * $self->{factor} * exp ($self->{logbase} * $i);
 };
 
 # reverse of power.
@@ -459,7 +473,7 @@ sub _index {
 	};
 
 	my $i = (log abs($x) - $self->{logfloor}) / $self->{logbase};
-	$i = int($i + 1.5); # +0.5: rounding; +1: index(floor) = 1, not 0
+	$i = int($i + 1); # +0.5: rounding; +1: index(floor) = 1, not 0
 	return $x < 0 ? -$i : $i;
 };
 
@@ -471,8 +485,7 @@ sub _bucket {
 		return \($self->{zero});
 	};
 
-	my $i = ((log abs $x) - $self->{logfloor}) / $self->{logbase};
-	$i = int($i + 0.5);
+	my $i = int ( ((log abs $x) - $self->{logfloor}) / $self->{logbase} );
 	my $store = $x < 0 ? "neg" : "pos";
 	return \( $self->{$store}[$i] );
 };

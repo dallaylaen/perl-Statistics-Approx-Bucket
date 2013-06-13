@@ -6,6 +6,8 @@ use Data::Dumper;
 
 use Statistics::Approx::Bucket;
 
+my $PRECISION = 10**(1/10) - 1;
+
 my @samples = ([1..100], [-100..-1], [-10..12],
 	[map { $_ / 10 } -15..35 ]);
 plan tests => 14 * @samples;
@@ -14,7 +16,7 @@ foreach (@samples) {
 	my @data = @$_;
 	note "### Testing @data...";
 	my $stat =  Statistics::Approx::Bucket->new(
-		floor => 1, base => 10**(1/10));
+		floor => 1, base => 1 + $PRECISION);
 	$stat->add_data(@data);
 	# note ( Dumper( $stat ));
 
@@ -47,9 +49,14 @@ foreach (@samples) {
 };
 
 #######
+my $total_off;
+END { note "Total off by $total_off" };
 sub about {
 	my ($got, $exp, $msg) = @_;
-	my $ret = ok ( abs ( $got - $exp ) / abs ($exp) < 0.1,
-		$msg . " (exp = $exp, got = $got)");
+	my $off = eval {
+		2 * abs ( $got - $exp ) / (abs($got) + abs($exp) )
+	} || 0;
+	$total_off += $off;
+	my $ret = ok ( $off < $PRECISION , $msg . " (exp = $exp, got = $got)");
 	return $ret;
 };
