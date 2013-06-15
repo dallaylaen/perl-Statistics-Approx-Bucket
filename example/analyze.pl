@@ -5,6 +5,7 @@
 
 use strict;
 use Statistics::Approx::Bucket;
+# use Statistics::Descriptive;
 
 my $base = 10**(1/20);
 my $floor = 10**-6;
@@ -25,6 +26,7 @@ if ( eval { require Getopt::Long; 1; } ) {
 };
 
 my $stat = Statistics::Approx::Bucket->new( base => $base, floor => $floor);
+# my $stat = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {
 	$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
@@ -33,8 +35,8 @@ while (<STDIN>) {
 print_result();
 
 sub print_result {
-	printf "Count: %u\nMean:  %f\nDisp:  %f\nMin:   %f\nMax:   %f\n",
-		$stat->count, $stat->mean, $stat->std_dev,
+	printf "Count: %u\nAverage: %f +- %f\nRange: %f .. %f\n",
+		$stat->count, $stat->mean, $stat->standard_deviation,
 		$stat->min, $stat->max;
 	printf "Percentiles:\n";
 	foreach (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {
