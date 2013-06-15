@@ -1,5 +1,14 @@
 Revision history for Statistics-Approx-Bucket
 
+0.03	Sun Jun 16 2013
+	API add_data_hash/get_data_hash data export/import
+	API central/standardized moments of any power
+	API geometric_mean, harmonic_mean, quantile, median
+	BIN Add example/summary.pl
+	SPD Add result caching for CPU-intensive getters
+	TST More tests (coverage 93%)
+	BUG Numerous bugfixes
+
 0.02    Mon Jun 10 2013
 	API count, mean, and standard deviation added.
 	DOC a brief description and aknowledgements added.

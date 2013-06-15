@@ -17,7 +17,8 @@ if ( eval { require Getopt::Long; 1; } ) {
 		'base=s' => \$base,
 		'floor=s' => \$floor,
 		'help' => sub {
-			print "usage: $0 [--base <1+small o> --floor <nnn>]";
+			print "Usage: $0 [--base <1+small o> --floor <nnn>]\n";
+			print "Read numbers from STDIN, output stat summary\n";
 			exit 2;
 		},
 	);

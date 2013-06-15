@@ -11,11 +11,11 @@ using logarithmic buckets to store data.
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = 0.0208;
+our $VERSION = 0.03;
 
 =head1 SYNOPSIS
 
@@ -291,6 +291,7 @@ Find $n-th percentile, i.e. a value below which lies $n % of the data.
 0-th percentile is by definition -inf and is returned as undef
 (see Statistics::Descriptive).
 
+$n is a real number, not necessarily integer.
 =cut
 
 sub percentile {

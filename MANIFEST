@@ -12,4 +12,4 @@ xt/boilerplate.t
 t/02-private.t
 t/03-exact-basic.t
 t/04-exact-additional.t
-example/analyze.pl
+example/summary.pl
