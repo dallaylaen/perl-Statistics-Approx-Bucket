@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.03;
+our $VERSION = 0.0301;
 
 =head1 SYNOPSIS
 
@@ -531,7 +531,7 @@ sub _index {
 		return 0;
 	};
 
-	my $i = (log abs($x) - $self->{logfloor}) / $self->{logbase};
+	my $i = ((log abs $x) - $self->{logfloor}) / $self->{logbase};
 	$i = int($i + 1); # +0.5: rounding; +1: index(floor) = 1, not 0
 	return $x < 0 ? -$i : $i;
 };
