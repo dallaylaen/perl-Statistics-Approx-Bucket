@@ -10,7 +10,7 @@ my $PRECISION = 10**(1/10) - 1;
 
 my @samples = ([1..100], [-100..-1], [-10..12],
 	[map { $_ / 10 } -15..35 ]);
-plan tests => 14 * @samples;
+plan tests => 18 * @samples;
 
 foreach (@samples) {
 	my @data = @$_;
@@ -46,6 +46,12 @@ foreach (@samples) {
 	about ($stat->sumsq, $s2, "sumsq");
 	about ($stat->mean, $mean, "mean");
 	about ($stat->std_dev, $std_dev, "std_dev");
+
+	# mean_of advanced integral properties
+	about ($stat->mean_of(sub{1}), 1, "Expectation of 1 == 1");
+	about ($stat->mean_of(sub{$_[0]}), $mean, "Expectation of x == mean");
+	about ($stat->mean_of(sub{$_[0]*$_[0]}), $s2/$n, "Expectation of x**2");
+	about ($stat->mean_of(sub{($_[0]-$mean)**2}), $std_dev**2, "Yet another sigma");
 };
 
 #######

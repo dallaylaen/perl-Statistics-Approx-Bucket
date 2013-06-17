@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 10;
+use Test::More tests => 31;
 
 use Statistics::Approx::Bucket;
 
@@ -16,12 +16,9 @@ is ($stat->_power(-7), -8, "power(-)");
 is ($stat->_power( $stat->_index( $_ ) ), $_, "bucket/power round trip $_")
 	for qw(0 1 8 -1 -8);
 
-__END__
-# These functions not yet done!
-
+# bucket border functions
 is ($stat->_lower($_+1), $stat->_upper($_), "lower[$_+1] == upper[$_]")
 	for -3..3;
-
 ok ($stat->_lower($_) < $stat->_power($_), "lower < center ($_)")
 	for -3..3;
 ok ($stat->_upper($_) > $stat->_power($_), "upper > center ($_)")

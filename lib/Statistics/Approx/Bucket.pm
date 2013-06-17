@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0301;
+our $VERSION = 0.0302;
 
 =head1 SYNOPSIS
 
@@ -429,6 +429,27 @@ sub std_moment {
 		/ ( $dev**$n * $self->{count} );
 };
 
+=head2 mean_of( $code, [$min, $max] )
+
+Return expectation of $code over sample within given range.
+
+$code is expected to be a pure function (i.e. depending only on its input
+value, and having no side effects).
+
+The underlying integration mechanism only calculates $code once per bucket,
+so $code should be stable as in not vary wildly over small intervals.
+
+=cut
+
+sub mean_of {
+	my $self = shift;
+	my ($code, $min, $max) = @_;
+
+	my $weight = $self->_integrate( sub {1}, $min, $max );
+	return 0 unless $weight;
+	return $self->_integrate($code, $min, $max) / $weight;
+};
+
 =head2 sum_func( $code )
 
 Return sum of $code->($_) across all data. $code is expected to have no side
@@ -511,6 +532,39 @@ foreach ( qw( quantile ) ) {
 	*std_dev = \&standard_deviation;
 };
 
+sub _integrate {
+	my $self = shift;
+	my ($code, $min, $max) = @_;
+
+	# prepare indices
+	my $mindex = defined $min ? $self->_index($min) : "-inf";
+	my $maxdex = defined $max ? $self->_index($max) : "+inf";
+	$mindex = -scalar @{ $self->{neg} }
+		if $mindex < -scalar @{ $self->{neg} };
+	$maxdex = +scalar @{ $self->{pos} }
+		if $maxdex > +scalar @{ $self->{pos} };
+
+	# sum up all buckets
+	my $sum = 0;
+	for (my $i = $mindex; $i <= $maxdex; $i++) {
+		my $count = $self->_idx2value($i);
+		next unless $count;
+		$sum += $self->_idx2value($i) * $code->($self->_power($i));
+	};
+
+	# cut the edges
+
+	defined $min and $sum -= ($min - $self->_lower($mindex))
+		* $self->_idx2value($mindex) * $code->($self->_power($mindex))
+		/ ($self->_upper($mindex) - $self->_lower($mindex));
+
+	defined $max and $sum -= ($self->_upper($maxdex) - $max)
+		* $self->_idx2value($maxdex) * $code->($self->_power($maxdex))
+		/ ($self->_upper($maxdex) - $self->_lower($maxdex));
+
+	return $sum;
+};
+
 # Some private functions: value <=> bucket.
 sub _power {
 	my $self = shift;
@@ -547,6 +601,50 @@ sub _bucket {
 	my $i = int ( ((log abs $x) - $self->{logfloor}) / $self->{logbase} );
 	my $store = $x < 0 ? "neg" : "pos";
 	return \( $self->{$store}[$i] );
+};
+
+sub _idx2bucket {
+	my $self = shift;
+	my $idx = shift;
+
+	$idx = int $idx;
+	if ($idx == 0) {
+		return \($self->{zero});
+	};
+	my $store = $idx < 0 ? "neg" : "pos";
+	return \($self->{$store}[abs($idx) - 1]);
+};
+sub _idx2value {
+	my $self = shift;
+	my $idx = shift;
+
+	$idx = int $idx;
+	if ($idx == 0) {
+		return $self->{zero} || 0;
+	};
+	my $store = $idx < 0 ? "neg" : "pos";
+	return $self->{$store}[abs($idx) - 1] || 0;
+};
+
+# lower, upper limits of $i-th bucket
+sub _lower {
+	my $self = shift;
+	my $idx = shift;
+
+	$idx = int ($idx);
+	if (!$idx) {
+		return -$self->{floor};
+	};
+	if ($idx > 0) {
+		return $self->{floor} * $self->{base} ** ($idx-1);
+	} else {
+		return - $self->{floor} * $self->{base} ** (-$idx);
+	};
+};
+
+sub _upper {
+	my $self = shift;
+	return -$self->_lower(-$_[0]);
 };
 
 =head1 AUTHOR
