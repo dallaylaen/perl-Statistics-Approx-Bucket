@@ -14,3 +14,4 @@ t/03-exact-basic.t
 t/04-exact-additional.t
 t/05-mean_of.t
 example/summary.pl
+t/06-getters.t

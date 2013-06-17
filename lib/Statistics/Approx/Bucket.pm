@@ -15,12 +15,22 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0302;
+our $VERSION = 0.0303;
 
 =head1 SYNOPSIS
 
     use Statistics::Approx::Bucket;
-    my $stat = Statistics::Approx::Bucket->new (floor => 1E-6, );
+    my $stat = Statistics::Approx::Bucket->new (floor => 1E-6, base => 1.01);
+
+    while(<>) {
+        chomp;
+        $stat->add_data($_);
+    };
+
+    # This can also be done in O(1) memory, precisely
+    printf "Mean: %f +- %f\n", $stat->mean, $stat->standard_deviation;
+    # This requires storing actual data, or approximating
+    printf "Median: %f\n", $stat->median;
 
 =head1 DESCRIPTION
 
@@ -87,6 +97,30 @@ sub new {
 	$self->{logfloor} = log $opt{floor};
 	$self->clear;
 	return $self;
+};
+
+=head2 bucket_width()
+
+Get bucket width (relative to center of bucket). Percentiles are off
+by no more than half of this.
+
+=cut
+
+sub bucket_width {
+	my $self = shift;
+	return $self->{base} - 1;
+};
+
+=head2 zero_threshold()
+
+Get zero threshold. Numbers with absolute value below this are considered
+zeroes.
+
+=cut
+
+sub zero_threshold {
+	my $self = shift;
+	return $self->{floor};
 };
 
 =head2 clear()
