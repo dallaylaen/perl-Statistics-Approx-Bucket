@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0305;
+our $VERSION = 0.0306;
 
 =head1 SYNOPSIS
 
@@ -273,12 +273,12 @@ Values of minimal and maximal buckets.
 
 sub min {
 	my $self = shift;
-	return ( sort { $a <=> $b } keys %{ $self->{data} } )[0];
+	return $self->_sort->[0];
 };
 
 sub max {
 	my $self = shift;
-	return ( sort { $a <=> $b } keys %{ $self->{data} } )[-1];
+	return $self->_sort->[-1];
 };
 
 =head2 sample_range()
@@ -312,12 +312,21 @@ sub percentile {
 
 	my $need = $x * $self->{count} / 100;
 	return if $need < 1;
-	my $sum = 0;
-	foreach my $val (sort { $a <=> $b } keys %{ $self->{data} }) {
-		$sum += $self->{data}{$val};
-		return $val if $sum >= $need;
+
+	# dichotomize
+	my $prob = $self->_probability;
+	my $l = 0;
+	my $r = @$prob;
+	while ($l+1 < $r) {
+		my $m = int( ($l + $r) / 2 );
+		if ($prob->[$m] < $need) {
+			$l = $m;
+		} else {
+			$r = $m;
+		};
 	};
-	die "Control never reaches here";
+	$l++ if $prob->[$l] < $need;
+	return $self->_sort->[$l];
 };
 
 =head2 quantile( 0..4 )
@@ -530,11 +539,26 @@ sub _integrate {
 	my $min = defined $realmin ? $self->_round($realmin) : "-inf";
 	my $max = defined $realmax ? $self->_round($realmax) : "+inf";
 
+	# find first bucket
+	my $keys = $self->_sort;
+	my $l = 0;
+	my $r = @$keys;
+	while ($l+1 < $r) {
+		my $m = int( ($l + $r) / 2);
+		if ($keys->[$m] <= $min) {
+			$l = $m;
+		} else {
+			$r = $m;
+		};
+	};
+
 	# add up buckets
 	my $sum = 0;
-	while (my ($val, $count) = each %{ $self->{data} }) {
-		next if $val < $min or $val > $max;
-		$sum += $count * $code->( $val );
+	for (my $i = $l; $i < @$keys; $i++) {
+		my $val = $keys->[$i];
+		next if $val < $min;
+		last if $val > $max;
+		$sum += $self->{data}{$val} * $code->( $val );
 	};
 
 	# cut edges
@@ -580,6 +604,25 @@ sub _upper {
 
 sub _lower {
 	return -$_[0]->_upper(-$_[1]);
+};
+
+sub _sort {
+	my $self = shift;
+	return $self->{cache}{sorted}
+		||= [ sort { $a <=> $b } keys %{ $self->{data} } ];
+};
+
+sub _probability {
+	my $self = shift;
+	return $self->{cache}{probability} ||= do {
+		my @array;
+		my $sum = 0;
+		foreach (@{ $self->_sort }) {
+			$sum += $self->{data}{$_};
+			push @array, $sum;
+		};
+		\@array;
+	};
 };
 
 =head1 AUTHOR
