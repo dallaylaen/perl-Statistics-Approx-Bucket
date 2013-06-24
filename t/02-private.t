@@ -1,27 +1,31 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 31;
+use Test::More tests => 3 + 5*6;
+use Test::More;
 
 use Statistics::Approx::Bucket;
 
 my $stat = Statistics::Approx::Bucket->new(floor => 0.125, base => 2);
 
-is ($stat->_power(0),   0, "power(0)");
-is ($stat->_power(4),   1, "power(1)");
-is ($stat->_power(7),   8, "power(+)");
-is ($stat->_power(-4), -1, "power(-)");
-is ($stat->_power(-7), -8, "power(-)");
+is ($stat->_round(0.01), 0, "round(0)");
+is ($stat->_round(-1), -1, "round(-1)");
+is ($stat->_round(40), 32, "round(40)");
 
-is ($stat->_power( $stat->_index( $_ ) ), $_, "bucket/power round trip $_")
-	for qw(0 1 8 -1 -8);
+foreach (0, 0.001, 1, -1, exp 3, -11) {
+	cmp_ok ($stat->_lower($_), "<=", $_, "floor< $_");
+	cmp_ok ($stat->_upper($_), ">=", $_, "ceil > $_");
+	cmp_ok ($stat->_lower($_), "<", $stat->_round($_), "floor<round $_");
+	cmp_ok ($stat->_upper($_), ">", $stat->_round($_), "ceil >round $_");
 
-# bucket border functions
-is ($stat->_lower($_+1), $stat->_upper($_), "lower[$_+1] == upper[$_]")
-	for -3..3;
-ok ($stat->_lower($_) < $stat->_power($_), "lower < center ($_)")
-	for -3..3;
-ok ($stat->_upper($_) > $stat->_power($_), "upper > center ($_)")
-	for -3..3;
-
-
+	if ($stat->_round($_) > 0) {
+		is ($stat->_upper($_) / $stat->_lower($_),
+			1+$stat->bucket_width, "ceil/floor($_)");
+	} elsif ( $stat->_round($_) == 0) {
+		is ($stat->_upper($_) / $stat->_lower($_),
+			-1, "ceil/floor($_)");
+	} else {
+		is ($stat->_lower($_) / $stat->_upper($_),
+			1+$stat->bucket_width, "ceil/floor($_)");
+	};
+};

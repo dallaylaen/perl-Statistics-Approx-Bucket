@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0303;
+our $VERSION = 0.0304;
 
 =head1 SYNOPSIS
 
@@ -49,9 +49,10 @@ which does not however exceed the buckets' width ("base").
 
 ########################################################################
 #  == HOW IT WORKS ==
-#  Buckets are stored in arrays {neg} and {pos}, and special value {zero}
+#  Buckets are stored in a hash: { $value => $count, ... }
 #  {base} is bucket width, {logbase} == log {base} (cache)
-#  {floor} is value below which everything is zero, {logfloor} == log {floor}
+#  {floor} is absolute value below which everything is zero,
+#       {logfloor} == log {floor}
 #  {factor} is ({floor} + {floor}*{base}) / 2 == center of first bucket
 #  So every number is approximated as $x = {factor} * {base} ** $i
 #    where $i is the number of bucket.
@@ -62,7 +63,7 @@ which does not however exceed the buckets' width ("base").
 use Carp;
 
 use fields qw(
-	pos neg zero
+	data
 	base logbase floor logfloor factor
 	count
 	cache
@@ -131,9 +132,7 @@ Destroy all stored data.
 
 sub clear {
 	my $self = shift;
-	$self->{neg} = [];
-	$self->{zero} = 0;
-	$self->{pos} = [];
+	$self->{data} = {};
 	$self->{count} = 0;
 	delete $self->{cache};
 	return $self;
@@ -183,18 +182,8 @@ Return distribution hashref {value => number of occurances}.
 sub get_data_hash {
 	my $self = shift;
 
-	my $hash = {};
-	for (my $i = @{ $self->{neg} }; $i-->0; ) {
-		next unless $self->{neg}[$i];
-		$hash->{ $self->_power(-1-$i) } = $self->{neg}[$i];
-	};
-	if ($self->{zero}) {
-		$hash->{ 0 } = $self->{zero};
-	};
-	for (my $i = 0; $i < @{ $self->{pos} }; $i++ ) {
-		next unless $self->{pos}[$i];
-		$hash->{ $self->_power(+1+$i) } = $self->{pos}[$i];
-	};
+	# shallow copy of data
+	my $hash = {%{ $self->{data} }};
 	return $hash;
 
 };
@@ -287,24 +276,12 @@ Values of minimal and maximal buckets.
 
 sub min {
 	my $self = shift;
-	for ( my $i = @{ $self->{neg} }; $i-->0; ) {
-		$self->{neg}[$i] and return $self->_power(-1-$i);
-	};
-	$self->{zero} and return 0;
-	for ( my $i = 0; $i<@{ $self->{pos} }; $i++ ) {
-		$self->{pos}[$i] and return $self->_power(+1+$i);
-	};
+	return ( sort { $a <=> $b } keys %{ $self->{data} } )[0];
 };
 
 sub max {
 	my $self = shift;
-	for ( my $i = @{ $self->{pos} }; $i-->0; ) {
-		$self->{pos}[$i] and return $self->_power(+1+$i);
-	};
-	$self->{zero} and return 0;
-	for ( my $i = 0; $i<@{ $self->{neg} }; $i++ ) {
-		$self->{neg}[$i] and return $self->_power(-1-$i);
-	};
+	return ( sort { $a <=> $b } keys %{ $self->{data} } )[-1];
 };
 
 =head2 sample_range()
@@ -339,19 +316,9 @@ sub percentile {
 	my $need = $x * $self->{count} / 100;
 	return if $need < 1;
 	my $sum = 0;
-	for (my $i = @{ $self->{neg} }; $i-->0; ) {
-		next unless $self->{neg}[$i];
-		$sum += $self->{neg}[$i];
-		return $self->_power(-1-$i) if $sum >= $need;
-	};
-	if ($self->{zero}) {
-		$sum += $self->{zero} || 0;
-		return 0 if $sum >= $need;
-	};
-	for (my $i = 0; $i < @{ $self->{pos} }; $i++ ) {
-		next unless $self->{pos}[$i];
-		$sum += $self->{pos}[$i];
-		return $self->_power($i+1) if $sum >= $need;
+	foreach my $val (sort { $a <=> $b } keys %{ $self->{data} }) {
+		$sum += $self->{data}{$val};
+		return $val if $sum >= $need;
 	};
 	die "Control never reaches here";
 };
@@ -407,7 +374,7 @@ sub harmonic_mean {
 		$ret = $self->count / $self->sum_func(sub { 1/$_[0] });
 	};
 	if ($@ and $@ !~ /division.*zero/) {
-		die $@; # rethrow
+		die $@; # rethrow ALL BUT 1/0 which yields undef
 	};
 	return $ret;
 };
@@ -426,7 +393,7 @@ sub geometric_mean {
 	croak __PACKAGE__.": geometric_mean() called on mixed sign sample"
 		if $self->min * $self->max < 0;
 
-	return 0 if $self->{zero};
+	return 0 if $self->{data}{0};
 	# this must be dog slow, but we already log() too much at this point.
 	my $ret = exp( $self->sum_func( sub { log abs $_[0] } ) / $self->{count} );
 	return $self->min < 0 ? -$ret : $ret;
@@ -496,16 +463,8 @@ sub sum_func {
 	my ($code) = @_;
 
 	my $sum = 0;
-	for (my $i = @{ $self->{neg} }; $i-->0; ) {
-		next unless $self->{neg}[$i];
-		$sum += $self->{neg}[$i] * $code->( $self->_power(-1-$i) );
-	};
-	if ($self->{zero}) {
-		$sum += $self->{zero} * $code->( $self->_power(0) );
-	};
-	for (my $i = 0; $i < @{ $self->{pos} }; $i++ ) {
-		next unless $self->{pos}[$i];
-		$sum += $self->{pos}[$i] * $code->( $self->_power(+1+$i) );
+	while (my ($val, $count) = each %{ $self->{data} }) {
+		$sum += $count * $code->( $val );
 	};
 	return $sum;
 };
@@ -568,117 +527,70 @@ foreach ( qw( quantile ) ) {
 
 sub _integrate {
 	my $self = shift;
-	my ($code, $min, $max) = @_;
+	my ($code, $realmin, $realmax) = @_;
 
-	# prepare indices
-	my $mindex = defined $min ? $self->_index($min) : "-inf";
-	my $maxdex = defined $max ? $self->_index($max) : "+inf";
-	$mindex = -scalar @{ $self->{neg} }
-		if $mindex < -scalar @{ $self->{neg} };
-	$maxdex = +scalar @{ $self->{pos} }
-		if $maxdex > +scalar @{ $self->{pos} };
+	# correct limits
+	my $min = defined $realmin ? $self->_round($realmin) : "-inf";
+	my $max = defined $realmax ? $self->_round($realmax) : "+inf";
 
-	# sum up all buckets
+	# add up buckets
 	my $sum = 0;
-	for (my $i = $mindex; $i <= $maxdex; $i++) {
-		my $count = $self->_idx2value($i);
-		next unless $count;
-		$sum += $self->_idx2value($i) * $code->($self->_power($i));
+	while (my ($val, $count) = each %{ $self->{data} }) {
+		next if $val < $min or $val > $max;
+		$sum += $count * $code->( $val );
 	};
 
-	# cut the edges
-
-	defined $min and $sum -= ($min - $self->_lower($mindex))
-		* $self->_idx2value($mindex) * $code->($self->_power($mindex))
-		/ ($self->_upper($mindex) - $self->_lower($mindex));
-
-	defined $max and $sum -= ($self->_upper($maxdex) - $max)
-		* $self->_idx2value($maxdex) * $code->($self->_power($maxdex))
-		/ ($self->_upper($maxdex) - $self->_lower($maxdex));
+	# cut edges
+	if ($realmax) {
+		$sum -= $self->{data}{$max} * $code->($max)
+			* ($self->_upper($max) - $realmax);
+	};
+	if ($realmin) {
+		$sum -= $self->{data}{$min} * $code->($min)
+			* ($realmin - $self->_lower($min));
+	};
 
 	return $sum;
-};
-
-# Some private functions: value <=> bucket.
-sub _power {
-	my $self = shift;
-	my $i = shift;
-
-	return 0 if $i == 0;
-	my $sign = $i > 0 ? 1 : -1;
-	$i = abs($i)-1;
-	return $sign * $self->{factor} * exp ($self->{logbase} * $i);
-};
-
-# reverse of power.
-sub _index {
-	my $self = shift;
-	my $x = shift;
-
-	if (abs($x) < $self->{floor}) {
-		return 0;
-	};
-
-	my $i = ((log abs $x) - $self->{logfloor}) / $self->{logbase};
-	$i = int($i + 1); # +0.5: rounding; +1: index(floor) = 1, not 0
-	return $x < 0 ? -$i : $i;
 };
 
 sub _bucket {
 	my $self = shift;
 	my $x = shift;
 
+	my $key = $self->_round($x);
+	return \$self->{data}{$key};
+};
+
+sub _round {
+	my $self = shift;
+	my $x = shift;
+
 	if (abs($x) < $self->{floor}) {
-		return \($self->{zero});
+		return 0;
 	};
-
-	my $i = int ( ((log abs $x) - $self->{logfloor}) / $self->{logbase} );
-	my $store = $x < 0 ? "neg" : "pos";
-	return \( $self->{$store}[$i] );
-};
-
-sub _idx2bucket {
-	my $self = shift;
-	my $idx = shift;
-
-	$idx = int $idx;
-	if ($idx == 0) {
-		return \($self->{zero});
-	};
-	my $store = $idx < 0 ? "neg" : "pos";
-	return \($self->{$store}[abs($idx) - 1]);
-};
-sub _idx2value {
-	my $self = shift;
-	my $idx = shift;
-
-	$idx = int $idx;
-	if ($idx == 0) {
-		return $self->{zero} || 0;
-	};
-	my $store = $idx < 0 ? "neg" : "pos";
-	return $self->{$store}[abs($idx) - 1] || 0;
+	my $i = int (((log abs $x) - $self->{logfloor}) / $self->{logbase});
+	my $value = $self->{factor} * $self->{base} ** $i;
+	return $x < 0 ? -$value : $value;
 };
 
 # lower, upper limits of $i-th bucket
-sub _lower {
+sub _upper {
 	my $self = shift;
-	my $idx = shift;
+	my $x = shift;
 
-	$idx = int ($idx);
-	if (!$idx) {
-		return -$self->{floor};
+	if (abs($x) < $self->{floor}) {
+		return $self->{floor};
 	};
-	if ($idx > 0) {
-		return $self->{floor} * $self->{base} ** ($idx-1);
+	my $i = int (((log abs $x) - $self->{logfloor}) / $self->{logbase});
+	if ($x > 0) {
+		return $self->{floor} * $self->{base}**($i+1);
 	} else {
-		return - $self->{floor} * $self->{base} ** (-$idx);
+		return -$self->{floor} * $self->{base}**($i);
 	};
 };
 
-sub _upper {
-	my $self = shift;
-	return -$self->_lower(-$_[0]);
+sub _lower {
+	return -$_[0]->_upper(-$_[1]);
 };
 
 =head1 AUTHOR
