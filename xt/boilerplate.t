@@ -49,7 +49,7 @@ TODO: {
     "placeholder date/time"       => qr(Date/time)
   );
 
-  module_boilerplate_ok('lib/Statistics/Approx/Bucket.pm');
+  module_boilerplate_ok('lib/Statistics/Descriptive/LogScale.pm');
 
 
 }

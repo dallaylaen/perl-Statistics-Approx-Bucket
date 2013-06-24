@@ -3,9 +3,9 @@
 use strict;
 use Test::More tests => 4;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
-my $stat = Statistics::Approx::Bucket->new(floor => 0.125, base => 1.01);
+my $stat = Statistics::Descriptive::LogScale->new(floor => 0.125, base => 1.01);
 
 cmp_ok ($stat->zero_threshold, "<=", 0.125, "0 < real floor <= floor");
 cmp_ok ($stat->zero_threshold, ">", 0, "0 < real floor <= floor");

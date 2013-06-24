@@ -5,9 +5,9 @@ use Test::More tests => 10;
 use Test::Exception;
 use YAML;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
-my $stat = Statistics::Approx::Bucket->new (floor => 0.5, base => 2);
+my $stat = Statistics::Descriptive::LogScale->new (floor => 0.5, base => 2);
 
 $stat->add_data(1, 2, 4, 8, 16);
 
@@ -25,7 +25,7 @@ is ($stat->quantile(3), 8, "Q3");
 is ($stat->quantile(4), 16, "Q4");
 throws_ok {
 	$stat->quantile(5)
-} qr(tics::Approx.*must), "Q5 dies";
+} qr(tics::Descr.*must), "Q5 dies";
 
 note explain $stat->{cache};
 $stat->add_data(1, 1);

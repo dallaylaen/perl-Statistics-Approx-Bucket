@@ -3,7 +3,7 @@
 use Test::More tests => 1;
 
 BEGIN {
-    use_ok( 'Statistics::Approx::Bucket' ) || print "Bail out!\n";
+    use_ok( 'Statistics::Descriptive::LogScale' ) || print "Bail out!\n";
 }
 
-diag( "Testing Statistics::Approx::Bucket $Statistics::Approx::Bucket::VERSION, Perl $], $^X" );
+diag( "Testing Statistics::Descriptive::LogScale $Statistics::Descriptive::LogScale::VERSION, Perl $], $^X" );

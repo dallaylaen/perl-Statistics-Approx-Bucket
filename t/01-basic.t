@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Data::Dumper;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
 my $PRECISION = 10**(1/10) - 1;
 
@@ -15,7 +15,7 @@ plan tests => 18 * @samples;
 foreach (@samples) {
 	my @data = @$_;
 	note "### Testing @data...";
-	my $stat =  Statistics::Approx::Bucket->new(
+	my $stat =  Statistics::Descriptive::LogScale->new(
 		floor => 1, base => 1 + $PRECISION);
 	$stat->add_data(@data);
 	# note ( Dumper( $stat ));

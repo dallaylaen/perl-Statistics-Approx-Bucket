@@ -2,11 +2,11 @@ use 5.006;
 use strict;
 use warnings;
 
-package Statistics::Approx::Bucket;
+package Statistics::Descriptive::LogScale;
 
 =head1 NAME
 
-Statistics::Approx::Bucket - approximate statistical distribution class
+Statistics::Descriptive::LogScale - approximate statistical distribution class
 using logarithmic buckets to store data.
 
 =head1 VERSION
@@ -15,12 +15,12 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0306;
+our $VERSION = 0.0307;
 
 =head1 SYNOPSIS
 
-    use Statistics::Approx::Bucket;
-    my $stat = Statistics::Approx::Bucket->new (floor => 1E-6, base => 1.01);
+    use Statistics::Descriptive::LogScale;
+    my $stat = Statistics::Descriptive::LogScale->new (floor => 1E-6, base => 1.01);
 
     while(<>) {
         chomp;
@@ -642,15 +642,15 @@ Test suite is still sparse, leaving room for more stupid bugs.
 Adding linear interpolation could result in precision gains at little
 performance cost.
 
-Please report any bugs or feature requests to C<bug-statistics-approx-bucket at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Statistics-Approx-Bucket>.  I will be notified, and then you'll
+Please report any bugs or feature requests to C<bug-statistics-descriptive-logscale at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Statistics-Descriptive-LogScale>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc Statistics::Approx::Bucket
+    perldoc Statistics::Descriptive::LogScale
 
 
 You can also look for information at:
@@ -659,23 +659,23 @@ You can also look for information at:
 
 =item * GitHub:
 
-L<https://github.com/dallaylaen/perl-Statistics-Approx-Bucket>
+L<https://github.com/dallaylaen/perl-Statistics-Descriptive-LogScale>
 
 =item * RT: CPAN's request tracker (report bugs here)
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Approx-Bucket>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Descriptive-LogScale>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/Statistics-Approx-Bucket>
+L<http://annocpan.org/dist/Statistics-Descriptive-LogScale>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/Statistics-Approx-Bucket>
+L<http://cpanratings.perl.org/d/Statistics-Descriptive-LogScale>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Statistics-Approx-Bucket/>
+L<http://search.cpan.org/dist/Statistics-Descriptive-LogScale/>
 
 =back
 
@@ -702,4 +702,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-1; # End of Statistics::Approx::Bucket
+1; # End of Statistics::Descriptive::LogScale

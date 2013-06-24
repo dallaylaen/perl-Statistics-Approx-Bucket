@@ -6,11 +6,11 @@ use Data::Dumper;
 
 ok 1; ok 1; ok 1; exit;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
 my $PRECISION = 10**(1/10) - 1;
 
-my $stat =  Statistics::Approx::Bucket->new(
+my $stat =  Statistics::Descriptive::LogScale->new(
 	floor => 0.01, base => 1 + $PRECISION);
 
 my @data;

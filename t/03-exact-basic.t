@@ -3,9 +3,9 @@
 use strict;
 use Test::More tests => 15;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
-my $stat = Statistics::Approx::Bucket->new( floor => 1, base => 2);
+my $stat = Statistics::Descriptive::LogScale->new( floor => 1, base => 2);
 
 $stat->add_data(-2, 0, 0, 4, 8);
 
@@ -19,7 +19,7 @@ is ($stat->max, 8, "max");
 my $hash = $stat->get_data_hash;
 is_deeply( $hash, { -2 => 1, 0 => 2, 4=>1, 8=>1 }, "as_hash" );
 
-my $stat2 = Statistics::Approx::Bucket->new( floor => 1, base => 2);
+my $stat2 = Statistics::Descriptive::LogScale->new( floor => 1, base => 2);
 $stat2->add_data_hash($hash);
 
 foreach my $method (qw(count mean median sumsq min max)) {

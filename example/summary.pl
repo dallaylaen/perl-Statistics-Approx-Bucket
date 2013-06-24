@@ -4,7 +4,7 @@
 # and prints out a summary at EOF.
 
 use strict;
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 # use Statistics::Descriptive;
 
 my $base = 10**(1/20);
@@ -26,7 +26,7 @@ if ( eval { require Getopt::Long; 1; } ) {
 	@ARGV and die "Options given, but no Getopt::Long support";
 };
 
-my $stat = Statistics::Approx::Bucket->new( base => $base, floor => $floor);
+my $stat = Statistics::Descriptive::LogScale->new( base => $base, floor => $floor);
 # my $stat = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {

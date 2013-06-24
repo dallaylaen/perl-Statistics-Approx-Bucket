@@ -4,9 +4,9 @@ use strict;
 use Test::More tests => 3 + 5*6;
 use Test::More;
 
-use Statistics::Approx::Bucket;
+use Statistics::Descriptive::LogScale;
 
-my $stat = Statistics::Approx::Bucket->new(floor => 0.125, base => 2);
+my $stat = Statistics::Descriptive::LogScale->new(floor => 0.125, base => 2);
 
 is ($stat->_round(0.01), 0, "round(0)");
 is ($stat->_round(-1), -1, "round(-1)");

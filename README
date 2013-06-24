@@ -1,6 +1,6 @@
-Statistics-Approx-Bucket
+Statistics-Descriptive-LogScale
 
-Statistics::Approx::Bucket - approximate statistical distribution class
+Statistics::Descriptive::LogScale - approximate statistical distribution class
 using logarithmic buckets to store data. It allows to study various 
 distribution properties while only using very little memory, at the cost of
 some precision loss.
@@ -19,21 +19,21 @@ SUPPORT AND DOCUMENTATION
 After installing, you can find documentation for this module with the
 perldoc command.
 
-    perldoc Statistics::Approx::Bucket
+    perldoc Statistics::Descriptive::LogScale
 
 You can also look for information at:
 
     RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Approx-Bucket
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Descriptive-LogScale
 
     AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/Statistics-Approx-Bucket
+        http://annocpan.org/dist/Statistics-Descriptive-LogScale
 
     CPAN Ratings
-        http://cpanratings.perl.org/d/Statistics-Approx-Bucket
+        http://cpanratings.perl.org/d/Statistics-Descriptive-LogScale
 
     Search CPAN
-        http://search.cpan.org/dist/Statistics-Approx-Bucket/
+        http://search.cpan.org/dist/Statistics-Descriptive-LogScale/
 
 
 LICENSE AND COPYRIGHT
