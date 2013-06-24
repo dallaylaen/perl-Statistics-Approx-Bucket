@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.04;
+our $VERSION = 0.0401;
 
 =head1 SYNOPSIS
 
@@ -631,13 +631,17 @@ Konstantin S. Uvarin, C<< <khedin at gmail.com> >>
 
 =head1 BUGS
 
-The module is currently in alpha stage.
+The module is currently in alpha stage. There may be bugs.
 
-Behaviour around zero is inconsistent.
+The following methods of Statistics::Descriptive::Full
+apply to approximate statistics, but are not implemented yet:
 
-Performance is neglected.
-
-Test suite is still sparse, leaving room for more stupid bugs.
+frequency_distribution/frequency_distribution_ref,
+kurtosis,
+least_squares_fit,
+mode,
+skewness,
+trimmed_mean.
 
 Adding linear interpolation could result in precision gains at little
 performance cost.
