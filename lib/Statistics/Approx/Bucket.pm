@@ -15,7 +15,7 @@ Version 0.03
 
 =cut
 
-our $VERSION = 0.0304;
+our $VERSION = 0.0305;
 
 =head1 SYNOPSIS
 
@@ -149,11 +149,9 @@ sub add_data {
 	return unless @_;
 
 	delete $self->{cache};
-	foreach my $x (@_) {
+	foreach (@_) {
 		$self->{count}++;
-
-		my $bucket = $self->_bucket($x);
-		$$bucket++;
+		$self->{data}{ $self->_round($_) }++;
 	};
 };
 
@@ -167,9 +165,8 @@ sub add_data_hash {
 
 	delete $self->{cache};
 	foreach (keys %$hash) {
-		my $bucket = $self->_bucket( $_ );
-		$$bucket += $hash->{$_};
 		$self->{count} += $hash->{$_};
+		$self->{data}{ $self->_round($_) } += $hash->{$_};
 	};
 };
 
@@ -551,14 +548,6 @@ sub _integrate {
 	};
 
 	return $sum;
-};
-
-sub _bucket {
-	my $self = shift;
-	my $x = shift;
-
-	my $key = $self->_round($x);
-	return \$self->{data}{$key};
 };
 
 sub _round {
