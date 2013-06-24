@@ -1,5 +1,12 @@
 Revision history for Statistics-Descriptive-LogScale
 
+0.04	Mon Jun 24 2013
+	RENAME Statistics::Approx::Bucket => Statistics::Descriptive::LogScale
+	REF Rewrite engine: neg + poz + zero counters => one big hash
+	API bucket_width() and zero_threshold() getters
+	API mean_of( $function, $min, $max ) - arbitrary function expectation
+	BUG Fix another log abs(x) error, fix test
+
 0.03	Sun Jun 16 2013
 	API add_data_hash/get_data_hash data export/import
 	API central/standardized moments of any power
