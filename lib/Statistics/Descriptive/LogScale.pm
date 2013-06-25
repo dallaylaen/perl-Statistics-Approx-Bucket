@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0403;
+our $VERSION = 0.0404;
 
 =head1 SYNOPSIS
 
@@ -458,9 +458,9 @@ sub mean_of {
 	my $self = shift;
 	my ($code, $min, $max) = @_;
 
-	my $weight = $self->_integrate( sub {1}, $min, $max );
+	my $weight = $self->sum_of( sub {1}, $min, $max );
 	return 0 unless $weight;
-	return $self->_integrate($code, $min, $max) / $weight;
+	return $self->sum_of($code, $min, $max) / $weight;
 };
 
 =head2 sum_func( $code )
@@ -537,7 +537,19 @@ foreach ( qw( quantile ) ) {
 	*std_dev = \&standard_deviation;
 };
 
-sub _integrate {
+=head2 sum_of ( $code, [ $min, $max ] )
+
+Integrate arbitrary function over the sample within the [ $min, $max ] interval.
+Default values for both limits are infinities of appropriate sign.
+
+Values in the edge buckets are cut using interpolation if needed.
+
+NOTE: sum_of(sub{1}, $a, $b) would return rough nubmer of data points
+ between $a and $b.
+
+=cut
+
+sub sum_of {
 	my $self = shift;
 	my ($code, $realmin, $realmax) = @_;
 
@@ -568,11 +580,11 @@ sub _integrate {
 	};
 
 	# cut edges
-	if ($realmax) {
+	if ($realmax and $self->{data}{$max}) {
 		$sum -= $self->{data}{$max} * $code->($max)
 			* ($self->_upper($max) - $realmax);
 	};
-	if ($realmin) {
+	if ($realmin and $self->{data}{$min}) {
 		$sum -= $self->{data}{$min} * $code->($min)
 			* ($realmin - $self->_lower($min));
 	};
