@@ -18,7 +18,7 @@ foreach (@samples) {
 	my $stat =  Statistics::Descriptive::LogScale->new(
 		floor => 1, base => 1 + $PRECISION);
 	$stat->add_data(@data);
-	# note ( Dumper( $stat ));
+	note ( Dumper( $stat ));
 
 	is ($stat->percentile(0), undef, "0th % = -inf");
 	about ($stat->percentile(100/@data), $data[0],

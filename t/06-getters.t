@@ -1,15 +1,15 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 4;
+use Test::More tests => 3;
 
 use Statistics::Descriptive::LogScale;
 
-my $stat = Statistics::Descriptive::LogScale->new(floor => 0.125, base => 1.01);
+my $stat = Statistics::Descriptive::LogScale->new(
+	zero_thresh => 0.125, base => 1.01
+);
 
-cmp_ok ($stat->zero_threshold, "<=", 0.125, "0 < real floor <= floor");
-cmp_ok ($stat->zero_threshold, ">", 0, "0 < real floor <= floor");
-
+is ($stat->zero_threshold, 0.125, "floor");
 is ($stat->bucket_width, 0.01, "Bucket width as expected");
 
 $stat->add_data($stat->zero_threshold / 2);

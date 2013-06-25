@@ -11,11 +11,11 @@ using logarithmic buckets to store data.
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = 0.0401;
+our $VERSION = 0.0402;
 
 =head1 SYNOPSIS
 
@@ -51,33 +51,32 @@ which does not however exceed the buckets' width ("base").
 #  == HOW IT WORKS ==
 #  Buckets are stored in a hash: { $value => $count, ... }
 #  {base} is bucket width, {logbase} == log {base} (cache)
-#  {floor} is absolute value below which everything is zero,
-#       {logfloor} == log {floor}
-#  {factor} is ({floor} + {floor}*{base}) / 2 == center of first bucket
-#  So every number is approximated as $x = {factor} * {base} ** $i
-#    where $i is the number of bucket.
-#  Number of bucket OTOH is $i = int ( log abs $x - {logfloor} / {logbase} )
+#  {zero_thresh} is absolute value below which everything is zero
+#  {floor} is lower bound of bucket whose center is 1. {logfloor} = log {floor}
 #  Nearly all meaningful subs have to scan all the buckets, which is bad,
 #     but anyway better than scanning full sample.
 
 use Carp;
+use POSIX qw(floor);
 
 use fields qw(
 	data
-	base logbase floor logfloor factor
+	base logbase floor zero_thresh logfloor
 	count
 	cache
 );
 
 =head2 new( %options )
 
-%options must include:
+%options may include:
 
 =over
 
-=item * floor - values with absolute value less than this are considered zero;
+=item * base - ratio of adjacent buckets. Default is 10^(1/48), which gives
+5% precision and exact decimal powers.
 
-=item * base - ratio of adjacent buckets.
+=item * zero_thresh - absolute value threshold below which everything is
+considered zero.
 
 =back
 
@@ -87,15 +86,22 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	# TODO handle %opt somehow
-	$opt{factor} = $opt{floor};
-	$opt{floor} *= 2/(1+$opt{base});
+	# Sane default: about 5% precision + exact powers of 10
+	$opt{base} ||= 10**(1/48);
+	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
+	$opt{zero_thresh} ||= 0;
+	$opt{zero_thresh} >= 0
+		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
 
 	my $self = fields::new($class);
 	$self->{$_} = $opt{$_}
-		for qw(base floor factor);
+		for qw(base zero_thresh);
 	$self->{logbase} = log $opt{base};
-	$self->{logfloor} = log $opt{floor};
+
+	# floor = lower limit of bucket whose center is 1.
+	$self->{floor} = 2/(1+$opt{base});
+	$self->{logfloor} = log $self->{floor};
+
 	$self->clear;
 	return $self;
 };
@@ -121,7 +127,7 @@ zeroes.
 
 sub zero_threshold {
 	my $self = shift;
-	return $self->{floor};
+	return $self->{zero_thresh};
 };
 
 =head2 clear()
@@ -578,11 +584,11 @@ sub _round {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) < $self->{floor}) {
+	if (abs($x) <= $self->{zero_thresh}) {
 		return 0;
 	};
-	my $i = int (((log abs $x) - $self->{logfloor}) / $self->{logbase});
-	my $value = $self->{factor} * $self->{base} ** $i;
+	my $i = floor (((log abs $x) - $self->{logfloor})/ $self->{logbase});
+	my $value = $self->{base} ** $i;
 	return $x < 0 ? -$value : $value;
 };
 
@@ -591,10 +597,10 @@ sub _upper {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) < $self->{floor}) {
-		return $self->{floor};
+	if (abs($x) <= $self->{zero_thresh}) {
+		return $self->{zero_thresh};
 	};
-	my $i = int (((log abs $x) - $self->{logfloor}) / $self->{logbase});
+	my $i = floor (((log abs $x) - $self->{logfloor} )/ $self->{logbase});
 	if ($x > 0) {
 		return $self->{floor} * $self->{base}**($i+1);
 	} else {
