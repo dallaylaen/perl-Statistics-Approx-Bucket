@@ -5,10 +5,12 @@
 
 use strict;
 use Statistics::Descriptive::LogScale;
+
+my $can_size = eval { require Devel::Size; 1; };
 # use Statistics::Descriptive;
 
-my $base = 10**(1/20);
-my $floor = 10**-6;
+my $base;
+my $floor;
 
 # Don't require module just in case
 if ( eval { require Getopt::Long; 1; } ) {
@@ -26,7 +28,8 @@ if ( eval { require Getopt::Long; 1; } ) {
 	@ARGV and die "Options given, but no Getopt::Long support";
 };
 
-my $stat = Statistics::Descriptive::LogScale->new( base => $base, floor => $floor);
+my $stat = Statistics::Descriptive::LogScale->new(
+	base => $base, zero_thresh => $floor);
 # my $stat = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {
@@ -34,6 +37,10 @@ while (<STDIN>) {
 };
 
 print_result();
+
+if ($can_size) {
+	print "Memory usage: ".Devel::Size::total_size($stat)."\n";
+};
 
 sub print_result {
 	printf "Count: %u\nAverage: %f +- %f\nRange: %f .. %f\n",

@@ -15,12 +15,12 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0402;
+our $VERSION = 0.0403;
 
 =head1 SYNOPSIS
 
     use Statistics::Descriptive::LogScale;
-    my $stat = Statistics::Descriptive::LogScale->new (floor => 1E-6, base => 1.01);
+    my $stat = Statistics::Descriptive::LogScale->new ();
 
     while(<>) {
         chomp;
