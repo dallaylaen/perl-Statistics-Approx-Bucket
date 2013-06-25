@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 10;
+use Test::More tests => 16;
 use Test::Exception;
-use YAML;
+use Data::Dumper;
 
 use Statistics::Descriptive::LogScale;
 
@@ -27,7 +27,21 @@ throws_ok {
 	$stat->quantile(5)
 } qr(tics::Descr.*must), "Q5 dies";
 
+# check integration...
+is ($stat->sum_of( sub{ 1 }, 2, 8, ), 2, "sum_of(1, 2, 8)");
+is ($stat->sum_of( sub{ 1 }, 1, 2, ), 1, "sum_of(1, 1, 2)");
+is ($stat->sum_of( sub{ 1 }, undef, 5 )+$stat->sum_of( sub{ 1 }, 5, undef ),
+	$stat->sum_of( sub{ 1 } ), "sum (1, -inf..+inf)");
+
+is ($stat->sum_of( sub{ $_[0] }, 2, 8, ), 2/2 + 4 + 8/2, "sum(x, 2, 8)");
+is (
+	 $stat->sum_of( sub{ $_[0] }, undef, 5 )
+	+$stat->sum_of( sub{ $_[0] }, 5, undef ),
+	 $stat->sum_of( sub{ $_[0] } ), "sum(x, -inf..+inf)");
+
+is ($stat->trimmed_mean( 0.25 ), (1+4+4) / 2, "Trimmed mean");
+
+# check cache deletion
 note explain $stat->{cache};
 $stat->add_data(1, 1);
 ok (!exists $stat->{cache}, "Cache deleted on add");
-

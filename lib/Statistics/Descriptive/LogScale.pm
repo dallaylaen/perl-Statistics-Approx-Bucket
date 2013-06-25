@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0404;
+our $VERSION = 0.0405;
 
 =head1 SYNOPSIS
 
@@ -411,6 +411,29 @@ sub geometric_mean {
 	return $self->min < 0 ? -$ret : $ret;
 };
 
+=head2 trimmed_mean( $ltrim, [ $utrim ] )
+
+Return mean of sample with $ltrim and $utrim fraction of data points
+remover from lower and upper ends respectively.
+
+ltrim defaults to 0, and rtrim to ltrim.
+
+=cut
+
+sub trimmed_mean {
+	my $self = shift;
+	my ($lower, $upper) = @_;
+	$lower ||= 0;
+	$upper = $lower unless defined $upper;
+
+	my $min = $self->percentile($lower * 100);
+	my $max = $self->percentile(100 - $upper * 100);
+
+	return unless $min < $max;
+
+	return $self->mean_of(sub{$_[0]}, $min, $max);
+};
+
 =head2 central_moment( $n )
 
 Return $n-th central moment, that is, E((x - E(x))^$n).
@@ -459,7 +482,7 @@ sub mean_of {
 	my ($code, $min, $max) = @_;
 
 	my $weight = $self->sum_of( sub {1}, $min, $max );
-	return 0 unless $weight;
+	return unless $weight;
 	return $self->sum_of($code, $min, $max) / $weight;
 };
 
@@ -582,15 +605,17 @@ sub sum_of {
 	# cut edges
 	if ($realmax and $self->{data}{$max}) {
 		$sum -= $self->{data}{$max} * $code->($max)
-			* ($self->_upper($max) - $realmax);
+			* ($self->_upper($max) - $realmax)
+			/ ($self->_upper($max) - $self->_lower($max));
 	};
 	if ($realmin and $self->{data}{$min}) {
 		$sum -= $self->{data}{$min} * $code->($min)
-			* ($realmin - $self->_lower($min));
+			* ($realmin - $self->_lower($min))
+			/ ($self->_upper($min) - $self->_lower($min));
 	};
 
 	return $sum;
-};
+}; # end sum_of
 
 sub _round {
 	my $self = shift;
@@ -658,8 +683,7 @@ frequency_distribution/frequency_distribution_ref,
 kurtosis,
 least_squares_fit,
 mode,
-skewness,
-trimmed_mean.
+skewness.
 
 Adding linear interpolation could result in precision gains at little
 performance cost.
