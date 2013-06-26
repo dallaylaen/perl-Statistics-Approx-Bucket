@@ -46,6 +46,7 @@ sub print_result {
 	printf "Count: %u\nAverage: %f +- %f\nRange: %f .. %f\n",
 		$stat->count, $stat->mean, $stat->standard_deviation,
 		$stat->min, $stat->max;
+	printf "Trimmed mean(0.25): %f\n", $stat->trimmed_mean(0.25);
 	printf "Percentiles:\n";
 	foreach (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {
 		my $x = $stat->percentile($_);
