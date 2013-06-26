@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0405;
+our $VERSION = 0.0406;
 
 =head1 SYNOPSIS
 
@@ -411,6 +411,47 @@ sub geometric_mean {
 	return $self->min < 0 ? -$ret : $ret;
 };
 
+=head2 skewness()
+
+Return skewness of the distribution, calculated as
+n/(n-1)(n-2) * E((x-E(x))**3)/std_dev**3 (this is consistent with Excel).
+
+=cut
+
+sub skewness {
+	my $self = shift;
+
+	my $n = $self->{count};
+	return unless $n > 2;
+
+	# code stolen from Statistics::Descriptive
+	my $skew = $n * $self->std_moment(3);
+	my $correction = $n / ( ($n-1) * ($n-2) );
+	return $correction * $skew;
+};
+
+=head2 kurtosis()
+
+Return kurtosis of the distribution, that is 4-th standardized moment - 3.
+The exact formula used here is consistent with that of Excel and
+Statistics::Descriptive.
+
+=cut
+
+sub kurtosis {
+	my $self = shift;
+
+	my $n = $self->{count};
+	return unless $n > 3;
+
+	# code stolen from Statistics::Descriptive
+	my $kurt = $n * $self->std_moment(4);
+	my $correction1 = ( $n * ($n+1) ) / ( ($n-1) * ($n-2) * ($n-3) );
+	my $correction2 = ( 3  * ($n-1) ** 2) / ( ($n-2) * ($n-3) );
+
+	return $correction1 * $kurt - $correction2;
+};
+
 =head2 trimmed_mean( $ltrim, [ $utrim ] )
 
 Return mean of sample with $ltrim and $utrim fraction of data points
@@ -680,10 +721,7 @@ The following methods of Statistics::Descriptive::Full
 apply to approximate statistics, but are not implemented yet:
 
 frequency_distribution/frequency_distribution_ref,
-kurtosis,
-least_squares_fit,
-mode,
-skewness.
+mode.
 
 Adding linear interpolation could result in precision gains at little
 performance cost.
