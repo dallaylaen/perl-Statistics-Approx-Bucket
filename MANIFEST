@@ -16,3 +16,5 @@ t/05-mean_of.t
 example/summary.pl
 t/06-getters.t
 t/07-rounding-check.t
+example/side-by-side.pl
+example/sample_generator.pl
