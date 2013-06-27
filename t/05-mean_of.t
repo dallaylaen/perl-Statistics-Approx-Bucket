@@ -1,10 +1,8 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 3;
+use Test::More tests => 7;
 use Data::Dumper;
-
-ok 1; ok 1; ok 1; exit;
 
 use Statistics::Descriptive::LogScale;
 
@@ -20,14 +18,19 @@ foreach (1..100) {
 
 $stat->add_data(@data);
 
-near_zero ($stat->mean_of(sub { $_[0]*$_[0]*$_[0]}, -exp 3, exp 3),
+near_zero ($stat->mean_of(sub { $_[0]}, -exp 3, exp 3),
 	"mean of odd function over symmetric interval == 0");
-cmp_ok ($stat->mean_of(sub { $_[0]*$_[0]*$_[0]}, 0, exp 3), ">", 0,
+near_zero ($stat->mean_of(sub { $_[0]*$_[0]*$_[0]}, -exp 3, exp 3),
+	"mean of LARGE odd function over symmetric interval == 0");
+cmp_ok ($stat->mean_of(sub { $_[0]}, 0, exp 3), ">", 0,
 	"biased to the right => positive");
 
 cmp_mean( sub { $_[0]**3 } , 0, 30, "cube 0..30" );
 cmp_mean( sub { $_[0]**4 } , 0, 30, "cube 0..30" );
 cmp_mean( sub { 1 } , 0, 30, "cube 0..30" );
+
+near_zero ($stat->sum_of(sub{ 1 }, undef, 0)
+	-  $stat->sum_of(sub{ 1 }, 0, undef), "integrate up to zero = ok");
 
 #######
 my $total_off;

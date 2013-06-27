@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0409;
+our $VERSION = 0.0410;
 
 =head1 SYNOPSIS
 
@@ -583,6 +583,41 @@ sub _probability_density {
 	return \@density;
 };
 
+=head2 frequency_distribution_ref( \@index )
+
+=head2 frequency_distribution_ref( $n )
+
+=cut
+
+sub frequency_distribution_ref {
+	my $self = shift;
+	my $index = shift;
+
+	# make index if number given
+	if (!ref $index) {
+		croak __PACKAGE__.": frequency_distribution_ref(): ".
+			"argument must be array, of number > 2, not $index"
+			unless $index > 2;
+		my $min = $self->_lower($self->min);
+		my $max = $self->_upper($self->max);
+		my $step = ($max - $min) / $index;
+		$index = [ map { $min + $_ * $step } 1..$index ];
+	};
+
+	@$index = ("-inf", sort { $a <=> $b } @$index);
+
+	my @count;
+	for (my $i = 0; $i<@$index-1; $i++) {
+		push @count, $self->sum_of( sub{1},
+			$index->[$i], $index->[$i+1] );
+	};
+	shift $index; # remove -inf
+
+	my %hash;
+	@hash{@$index} = @count;
+	return \%hash;
+};
+
 =head2 mean_of( $code, [$min, $max] )
 
 Return expectation of $code over sample within given range.
@@ -697,9 +732,14 @@ sub sum_of {
 	my $self = shift;
 	my ($code, $realmin, $realmax) = @_;
 
-	# correct limits
-	my $min = defined $realmin ? $self->_round($realmin) : "-inf";
-	my $max = defined $realmax ? $self->_round($realmax) : "+inf";
+	return 0 if( defined $realmin and defined $realmax
+		and $realmin >= $realmax );
+
+	# correct limits. $min, $max are indices; $left, $right are limits
+	my $min   = defined $realmin ? $self->_round($realmin) : "-inf";
+	my $max   = defined $realmax ? $self->_round($realmax) : "+inf";
+	my $left  = defined $realmin ? $self->_lower($realmin) : "-inf";
+	my $right = defined $realmax ? $self->_upper($realmax) : "+inf";
 
 	# find first bucket
 	my $keys = $self->_sort;
@@ -707,33 +747,43 @@ sub sum_of {
 	my $r = @$keys;
 	while ($l+1 < $r) {
 		my $m = int( ($l + $r) / 2);
-		if ($keys->[$m] <= $min) {
+		if ($keys->[$m] < $left) {
 			$l = $m;
 		} else {
 			$r = $m;
 		};
 	};
 
+	# warn "sum_of [$min, $max]";
 	# add up buckets
 	my $sum = 0;
 	for (my $i = $l; $i < @$keys; $i++) {
 		my $val = $keys->[$i];
-		next if $val < $min;
-		last if $val > $max;
+		next if $val < $left;
+		last if $val > $right;
 		$sum += $self->{data}{$val} * $code->( $val );
 	};
 
-	# cut edges
-	if ($realmax and $self->{data}{$max}) {
-		$sum -= $self->{data}{$max} * $code->($max)
-			* ($self->_upper($max) - $realmax)
-			/ ($self->_upper($max) - $self->_lower($max));
+	# cut edges: the hard part
+	# min and max are now used as indices
+	# if min or max hits 0, we cut it in half (i.e. into equal 0+ and 0-)
+	# warn "Add up, sum_of = $sum";
+	if (defined $realmax and $self->{data}{$max}) {
+		my $width = $self->_upper($max) - $self->_lower($max);
+		my $part = $width
+			? ($self->_upper($max) - $realmax) / $width
+			: 0.5;
+		$sum -= $self->{data}{$max} * $code->($max) * $part;
 	};
-	if ($realmin and $self->{data}{$min}) {
-		$sum -= $self->{data}{$min} * $code->($min)
-			* ($realmin - $self->_lower($min))
-			/ ($self->_upper($min) - $self->_lower($min));
+	# warn "Cut R,  sum_of = $sum";
+	if (defined $realmin and $self->{data}{$min}) {
+		my $width = $self->_upper($min) - $self->_lower($min);
+		my $part = $width
+			? ($realmin - $self->_lower($min)) / $width
+			: 0.5;
+		$sum -= $self->{data}{$min} * $code->($min) * $part;
 	};
+	# warn "Cut L,  sum_of = $sum";
 
 	return $sum;
 }; # end sum_of
