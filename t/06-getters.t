@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use Statistics::Descriptive::LogScale;
 
@@ -9,7 +9,8 @@ my $stat = Statistics::Descriptive::LogScale->new(
 	zero_thresh => 0.125, base => 1.01
 );
 
-is ($stat->zero_threshold, 0.125, "floor");
+cmp_ok ($stat->zero_threshold, "<=", 0.125, "floor");
+cmp_ok ($stat->zero_threshold, ">", 0, "floor");
 is ($stat->bucket_width, 0.01, "Bucket width as expected");
 
 $stat->add_data($stat->zero_threshold / 2);

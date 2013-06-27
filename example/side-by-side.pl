@@ -38,13 +38,11 @@ while (<STDIN>) {
 #	warn "count = ".$stat_f->count;
 };
 
-warn "count =".$stat_f->count;
-
 print_result();
 
 sub print_result {
 	printf "%20s: %20s %20s\n", "method", "LogScale", "Full";
-	for (qw(count sum mean standard_deviation skewness kurtosis median)) {
+	for (qw(count mean standard_deviation skewness kurtosis)) {
 		print side_by_side($_);
 	};
 	for (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {

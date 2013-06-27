@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0406;
+our $VERSION = 0.0407;
 
 =head1 SYNOPSIS
 
@@ -94,13 +94,16 @@ sub new {
 		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
 
 	my $self = fields::new($class);
-	$self->{$_} = $opt{$_}
-		for qw(base zero_thresh);
-	$self->{logbase} = log $opt{base};
 
+	$self->{base} = $opt{base};
+	$self->{logbase} = log $opt{base};
 	# floor = lower limit of bucket whose center is 1.
 	$self->{floor} = 2/(1+$opt{base});
 	$self->{logfloor} = log $self->{floor};
+
+	# bootstrap zero_thresh - make it fit bin edge
+	$self->{zero_thresh} = 0;
+	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
 
 	$self->clear;
 	return $self;
