@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0407;
+our $VERSION = 0.0408;
 
 =head1 SYNOPSIS
 
@@ -507,6 +507,80 @@ sub std_moment {
 	my $dev = $self->std_dev;
 	return $self->sum_func(sub{ ($_[0] - $mean) ** $n })
 		/ ( $dev**$n * $self->{count} );
+};
+
+=head2 mode
+
+Mode of a distribution is the most common value for a discrete distribution,
+or maximum of probability density for continuous one. We assume the
+distribution IS continuous, as we're already approximating.
+
+So we count probability density by smoothing hit counts in nearest nonempty
+intervals to stabilize it a little.
+
+NOTE A better algorithm is wanted. Experimental.
+
+=cut
+
+sub mode {
+	my $self = shift;
+
+	my $index = $self->_sort;
+	return if (!@$index);
+	return $index->[0] if @$index == 1;
+
+	my @mode = (0, undef); # [ max_density, bucket_index ]
+	my $density = $self->_probability_density;
+
+	die "Uhhuh" unless @$index == @$density;
+
+	for my $i (0..@$index-1) {
+		$density->[$i] > $mode[0] or next;
+		$mode[0] = $density->[$i];
+		$mode[1] = $index->[$i]
+	};
+
+	return $mode[1];
+};
+
+sub _probability_density {
+	my $self = shift;
+
+	my $index = $self->_sort;
+	return [] unless @$index >= 2;
+
+	# FIXME AWFUL
+	# We cannot calculate mode by comparing bucket counts:
+	#   buckets differ in size, and wide ones would naturally
+	#   contain more hits.
+	# However, simple division by bucket size would result in instability
+	#   around zero. Besides, zeroth bucket may have zero width.
+	# So, we add up adjacent nonempty buckets to stabilize the
+	#   damned thing a little.
+	#                   C[prev] + 2 * C[this] + C[next]
+	# As in, density = ---------------------------------
+	#                          2 * |next - prev|
+	# The egde buckets get zero instead of right/left partner,
+	#   because life's so unfair.
+	# Still I fear it's hacky. I wish I knew better.
+	# Mode was a hell to implement.
+
+	my $bin = $self->{data};
+	my @density;
+
+	for (my $i = 1; $i < @$index-1; $i++ ) {
+		my $count = $bin->{ $index->[$i] }
+			+ ($bin->{ $index->[$i-1] }+$bin->{ $index->[$i+1] })/2;
+		$density[$i] = $count / ($index->[$i+1] - $index->[$i-1]);
+	};
+	# special cases
+	my $count = 0 + $bin->{ $index->[0] } + $bin->{ $index->[1] } / 2;
+	$density[0] = $count / (($index->[1] - $index->[0]) * 2);
+
+	$count = $bin->{ $index->[-2] } / 2 + $bin->{ $index->[-1] } + 0;
+	push @density, $count / (($index->[-1] - $index->[-2]) * 2);
+
+	return \@density;
 };
 
 =head2 mean_of( $code, [$min, $max] )

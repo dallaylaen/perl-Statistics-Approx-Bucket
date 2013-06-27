@@ -18,3 +18,4 @@ t/06-getters.t
 t/07-rounding-check.t
 example/side-by-side.pl
 example/sample_generator.pl
+t/08-mode.t
