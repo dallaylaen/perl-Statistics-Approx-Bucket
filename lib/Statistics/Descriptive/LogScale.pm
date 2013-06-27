@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0408;
+our $VERSION = 0.0409;
 
 =head1 SYNOPSIS
 
@@ -622,41 +622,33 @@ sub sum_func {
 	return $sum;
 };
 
-# Sorry for this black magic, but it's too hard to write //= in EVERY method
 # We'll keep methods' returned values under {cache}.
 # All setters destroy said cache altogether.
 # PLEASE replace this with a ready-made module if there's one.
 
-# Memoize all the methods w/o arguments
-foreach ( qw(sum sumsq mean min max variance standard_deviation) ) {
-	# close around these
-	my $name = $_;
-	my $orig_code = __PACKAGE__->can($name);
+# Sorry for this black magic, but it's too hard to write //= in EVERY method
+# Long story short
+# The next sub replaces $self->foo() with
+# sub { $self->{cache}{foo} //= $self->originnal_foo }
+# All setter methods are EXPECTED to destroy {cache} altogether.
+
+# NOTE if you plan subclassing the method, re-memoize methods you change.
+sub _memoize_method {
+	my ($class, $name, $arg) = @_;
+
+	my $orig_code = $class->can($name);
 	die "Error in memoizer section ($name)"
 		unless ref $orig_code eq 'CODE';
 
-	my $cached_code = sub {
-		my $self = shift;
-		if (!exists $self->{cache}{$name}) {
-			$self->{cache}{$name} = $orig_code->($self);
+	# begin long conditional
+	my $cached_code = !$arg
+	? sub {
+		if (!exists $_[0]->{cache}{$name}) {
+			$_[0]->{cache}{$name} = $orig_code->($_[0]);
 		};
-		return $self->{cache}{$name};
-	};
-
-	no strict 'refs'; ## no critic
-	no warnings 'redefine'; ## no critic
-	*$name = $cached_code;
-};
-
-# Memoize methods with 1 argument
-foreach ( qw( quantile ) ) {
-	# close around these
-	my $name = $_;
-	my $orig_code = __PACKAGE__->can($name);
-	die "Error in memoizer section ($name)"
-		unless ref $orig_code eq 'CODE';
-
-	my $cached_code = sub {
+		return $_[0]->{cache}{$name};
+	}
+	: sub {
 		my $self = shift;
 		my $arg = shift;
 		$arg = '' unless defined $arg;
@@ -666,10 +658,21 @@ foreach ( qw( quantile ) ) {
 		};
 		return $self->{cache}{"$name:$arg"};
 	};
+	# conditional ends here
 
 	no strict 'refs'; ## no critic
 	no warnings 'redefine'; ## no critic
-	*$name = $cached_code;
+	*{$class."::".$name} = $cached_code;
+}; # end of _memoize_method
+
+# Memoize all the methods w/o arguments
+foreach ( qw(sum sumsq mean min max variance standard_deviation mode) ) {
+	__PACKAGE__->_memoize_method($_);
+};
+
+# Memoize methods with 1 argument
+foreach ( qw(quantile central_moment std_moment) ) {
+	__PACKAGE__->_memoize_method($_, 1);
 };
 
 # add shorter alias of standard_deviation (this must happen AFTER memoization)
