@@ -5,8 +5,11 @@
 # Statistics::Descriptive{::LogScale, ::Full}
 
 use strict;
-use Statistics::Descriptive::LogScale;
 use Statistics::Descriptive;
+# always prefer local version of module
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use Statistics::Descriptive::LogScale;
 
 my $base;
 my $floor;
@@ -42,7 +45,7 @@ print_result();
 
 sub print_result {
 	printf "%20s: %20s %20s\n", "method", "LogScale", "Full";
-	for (qw(count mean standard_deviation skewness kurtosis)) {
+	for (qw(count mean standard_deviation skewness kurtosis mode)) {
 		print side_by_side($_);
 	};
 	for (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {

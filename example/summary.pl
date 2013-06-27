@@ -4,10 +4,12 @@
 # and prints out a summary at EOF.
 
 use strict;
-use Statistics::Descriptive::LogScale;
-
 my $can_size = eval { require Devel::Size; 1; };
-# use Statistics::Descriptive;
+
+# always prefer local version of module
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use Statistics::Descriptive::LogScale;
 
 my $base;
 my $floor;
@@ -30,7 +32,6 @@ if ( eval { require Getopt::Long; 1; } ) {
 
 my $stat = Statistics::Descriptive::LogScale->new(
 	base => $base, zero_thresh => $floor);
-# my $stat = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {
 	$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
@@ -46,12 +47,14 @@ sub print_result {
 	printf "Count: %u\nAverage: %f +- %f\nRange: %f .. %f\n",
 		$stat->count, $stat->mean, $stat->standard_deviation,
 		$stat->min, $stat->max;
-	printf "Trimmed mean(0.25): %f\n", $stat->trimmed_mean(0.25);
-	printf "Percentiles:\n";
+	printf "Skewness: %f; kurtosis: %f\n",
+		$stat->skewness, $stat->kurtosis;
+	printf "Trimmed mean(0.25): %f; mode: %f\n",
+		$stat->trimmed_mean(0.25), $stat->mode;
 	foreach (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {
 		my $x = $stat->percentile($_);
 		$x = "-inf" unless defined $x;
-		printf "%4.1f: %f\n", $_, $x;
+		printf "%4.1f%%: %f\n", $_, $x;
 	};
 };
 
