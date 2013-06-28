@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0502;
+our $VERSION = 0.0503;
 
 =head1 SYNOPSIS
 
@@ -166,7 +166,7 @@ sub add_data {
 
 =head2 add_data_hash ( { value => count, ... } )
 
-Add values efficiently.
+Add values with counts.
 
 =cut
 
@@ -185,7 +185,7 @@ sub add_data_hash {
 
 Return distribution hashref {value => number of occurances}.
 
-This is reverse of add_data_hash.
+This is inverse of add_data_hash.
 
 =cut
 

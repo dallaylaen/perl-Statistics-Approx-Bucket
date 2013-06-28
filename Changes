@@ -1,5 +1,8 @@
 Revision history for Statistics-Descriptive-LogScale
 
+0.0503	Sat Jun 29 2013
+	Fix stuff before uploading to CPAN.
+
 0.05	Fri Jun 28 2013
 	API frequency_distribution_ref() for histograms
 	API mode() - estimate probability density maximum (EXPERIMENTAL)
