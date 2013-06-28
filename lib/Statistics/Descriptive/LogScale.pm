@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0410;
+our $VERSION = 0.0411;
 
 =head1 SYNOPSIS
 
@@ -520,6 +520,9 @@ intervals to stabilize it a little.
 
 NOTE A better algorithm is wanted. Experimental.
 
+NOTE Testing shows mode fairly unstable around zero, e.g.
+normal distribution (10,10) returns mode close to 0.
+
 =cut
 
 sub mode {
@@ -587,12 +590,24 @@ sub _probability_density {
 
 =head2 frequency_distribution_ref( $n )
 
+=head2 frequency_distribution_ref
+
+Return numbers of data point counts below each number in @index as hashref.
+
+If a number is given instead of arrayref, @index is created
+by dividing [min, max] into $n intervals.
+
+If no parameters are given, return previous result, if any.
+
 =cut
 
 sub frequency_distribution_ref {
 	my $self = shift;
 	my $index = shift;
 
+	# ah, compatibility - return last value
+	return $self->{cache}{frequency_distribution_ref}
+		unless defined $index;
 	# make index if number given
 	if (!ref $index) {
 		croak __PACKAGE__.": frequency_distribution_ref(): ".
@@ -615,6 +630,7 @@ sub frequency_distribution_ref {
 
 	my %hash;
 	@hash{@$index} = @count;
+	$self->{cache}{frequency_distribution_ref} = \%hash;
 	return \%hash;
 };
 
@@ -847,13 +863,13 @@ Konstantin S. Uvarin, C<< <khedin at gmail.com> >>
 
 The module is currently in alpha stage. There may be bugs.
 
-The following methods of Statistics::Descriptive::Full
-apply to approximate statistics, but are not implemented yet:
+mode() is unstable around zero, better algorithm wanted.
 
-frequency_distribution/frequency_distribution_ref,
-mode.
+sum_of() requires more extensive unit testing.
 
-Adding linear interpolation could result in precision gains at little
+kurtosis() and skewness() show consistensy, but have no unit tests.
+
+Adding linear interpolation could result in precision gains at a little
 performance cost.
 
 Please report any bugs or feature requests to C<bug-statistics-descriptive-logscale at rt.cpan.org>, or through
