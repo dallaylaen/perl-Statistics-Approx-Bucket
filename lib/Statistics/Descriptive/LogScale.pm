@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0501;
+our $VERSION = 0.0502;
 
 =head1 SYNOPSIS
 
@@ -864,8 +864,6 @@ The module is currently in alpha stage. There may be bugs.
 mode() is unstable around zero, better algorithm wanted.
 
 sum_of() requires more extensive unit testing.
-
-kurtosis() and skewness() show consistensy, but have no unit tests.
 
 Adding linear interpolation could result in precision gains at a little
 performance cost.
