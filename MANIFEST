@@ -21,3 +21,4 @@ t/09-frequency.t
 example/compare-full.pl
 example/gen-sample.pl
 example/histogram.pl
+t/10-bin_search_private.t

@@ -15,7 +15,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = 0.0411;
+our $VERSION = 0.0412;
 
 =head1 SYNOPSIS
 
@@ -323,19 +323,10 @@ sub percentile {
 	return if $need < 1;
 
 	# dichotomize
-	my $prob = $self->_probability;
-	my $l = 0;
-	my $r = @$prob;
-	while ($l+1 < $r) {
-		my $m = int( ($l + $r) / 2 );
-		if ($prob->[$m] < $need) {
-			$l = $m;
-		} else {
-			$r = $m;
-		};
-	};
-	$l++ if $prob->[$l] < $need;
-	return $self->_sort->[$l];
+	# $i is lowest value >= needed
+	# $need doesnt exceed last bucket!
+	my $i = _bin_search_ge( $self->_probability, $need );
+	return $self->_sort->[ $i ];
 };
 
 =head2 quantile( 0..4 )
@@ -757,25 +748,15 @@ sub sum_of {
 	my $left  = defined $realmin ? $self->_lower($realmin) : "-inf";
 	my $right = defined $realmax ? $self->_upper($realmax) : "+inf";
 
-	# find first bucket
+	# find first bucket that's above $left
 	my $keys = $self->_sort;
-	my $l = 0;
-	my $r = @$keys;
-	while ($l+1 < $r) {
-		my $m = int( ($l + $r) / 2);
-		if ($keys->[$m] < $left) {
-			$l = $m;
-		} else {
-			$r = $m;
-		};
-	};
+	my $i = _bin_search_ge($keys, $left);
 
 	# warn "sum_of [$min, $max]";
 	# add up buckets
 	my $sum = 0;
-	for (my $i = $l; $i < @$keys; $i++) {
+	for (; $i < @$keys; $i++) {
 		my $val = $keys->[$i];
-		next if $val < $left;
 		last if $val > $right;
 		$sum += $self->{data}{$val} * $code->( $val );
 	};
@@ -803,6 +784,25 @@ sub sum_of {
 
 	return $sum;
 }; # end sum_of
+
+
+# BINARY SEARCH
+# Not a method, just a function
+# Takes sorted \@array and a $num
+# Return lowest $i such that $array[$i] >= $num
+# Return (scalar @array) if no such $i exists
+sub _bin_search_ge {
+	my ($array, $x) = @_;
+
+	return 0 unless @$array and $array->[0] < $x;
+	my $l = 0;
+	my $r = @$array;
+	while ($l+1 < $r) {
+		my $m = int( ($l + $r) /2);
+		$array->[$m] < $x ? $l = $m : $r = $m;
+	};
+	return $l+1;
+};
 
 sub _round {
 	my $self = shift;
