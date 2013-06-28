@@ -1,5 +1,16 @@
 Revision history for Statistics-Descriptive-LogScale
 
+0.05	Fri Jun 28 2013
+	API frequency_distribution_ref() for histograms
+	API mode() - estimate probability density maximum (EXPERIMENTAL)
+	API Implement all of Statistics::Descriptive::Full
+	API sum_of(CODE, a, b) to sum given function  over sample data
+	API Get rid of mandatory parameters in new()
+	BUG Some bugs fixed, more added.
+	TST Add histogram.pl, compare-full.pl and gen-sample.pl examples
+	REF move binary search into subroutine
+	REF rewrite memoization for great good
+
 0.04	Mon Jun 24 2013
 	RENAME Statistics::Approx::Bucket => Statistics::Descriptive::LogScale
 	REF Rewrite engine: neg + poz + zero counters => one big hash

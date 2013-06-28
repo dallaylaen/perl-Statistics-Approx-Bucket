@@ -11,11 +11,11 @@ using logarithmic buckets to store data.
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = 0.0412;
+our $VERSION = 0.05;
 
 =head1 SYNOPSIS
 
@@ -164,7 +164,9 @@ sub add_data {
 	};
 };
 
-=head2 add_data_hash
+=head2 add_data_hash ( { value => count, ... } )
+
+Add values efficiently.
 
 =cut
 
@@ -182,6 +184,8 @@ sub add_data_hash {
 =head2 get_data_hash()
 
 Return distribution hashref {value => number of occurances}.
+
+This is reverse of add_data_hash.
 
 =cut
 
@@ -240,7 +244,7 @@ sub mean {
 
 =head2 variance()
 
-Return data variance.
+Return data variance, i.e. E((x - E(x)) ** 2).
 
 =cut
 
@@ -254,14 +258,14 @@ sub variance {
 	}
 
 	my $var = $self->sumsq - $self->sum**2 / $self->{count};
-	return $var < 0 ? 0 : $var / ( $self->{count} - $div );
+	return $var <= 0 ? 0 : $var / ( $self->{count} - $div );
 };
 
 =head2 standard_deviation()
 
 =head2 std_dev()
 
-Return standard deviation.
+Return standard deviation (square root of variance).
 
 =cut
 
