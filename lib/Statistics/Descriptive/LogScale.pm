@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0503;
+our $VERSION = 0.0504;
 
 =head1 SYNOPSIS
 
@@ -200,7 +200,7 @@ sub get_data_hash {
 
 =head2 count
 
-Return number of data points.
+Returns number of data points.
 
 =cut
 
@@ -303,6 +303,20 @@ Return sample range of the dataset, i.e. max() - min().
 sub sample_range {
 	my $self = shift;
 	return $self->max - $self->min;
+};
+
+=head2 cdf ($x)
+
+Cumulative distribution function. Returns estimated probability of
+random data point from the sample being less than $x.
+
+=cut
+
+sub cdf {
+	my $self = shift;
+	my $x = shift;
+	return unless $self->{count};
+	return $self->_count($x) / $self->{count};
 };
 
 =head2 percentile( $n )
@@ -694,7 +708,7 @@ sub _memoize_method {
 }; # end of _memoize_method
 
 # Memoize all the methods w/o arguments
-foreach ( qw(sum sumsq mean min max variance standard_deviation mode) ) {
+foreach ( qw(sum sumsq mean min max standard_deviation mode) ) {
 	__PACKAGE__->_memoize_method($_);
 };
 
@@ -783,6 +797,27 @@ sub sum_of {
 	return $sum;
 }; # end sum_of
 
+# Get number of values below $x
+# Like sum_of(sub{1}, undef, $x), but faster.
+sub _count {
+	my $self = shift;
+	@_>1 and return $self->_count($_[1]) - $self->_count($_[0]);
+	my $x = shift;
+
+	my $upper = $self->_upper($x);
+	my $i = _bin_search_gt( $self->_sort, $upper );
+	!$i-- and return 0;
+	my $count = $self->_probability->[$i];
+
+	# interpolate
+	my $bucket = $self->_round( $x );
+	if (my $val = $self->{data}{$bucket}) {
+		my $width = ($upper - $bucket) * 2;
+		my $part = $width ? ( ($upper - $x) / $width) : 1/2;
+		$count -= $part * $val;
+	};
+	return $count;
+};
 
 # BINARY SEARCH
 # Not a method, just a function
@@ -800,6 +835,12 @@ sub _bin_search_ge {
 		$array->[$m] < $x ? $l = $m : $r = $m;
 	};
 	return $l+1;
+};
+sub _bin_search_gt {
+	my ($array, $x) = @_;
+	my $i = _bin_search_ge(@_);
+	$i++ if defined $array->[$i] and $array->[$i] == $x;
+	return $i;
 };
 
 sub _round {
