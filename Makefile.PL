@@ -13,7 +13,14 @@ WriteMakefile(
       : ()),
     PL_FILES            => {},
     PREREQ_PM => {
+        'Carp' => 0,
+        'POSIX' => 0,
+    },
+    BUILD_REQUIRES => {
+        'Data::Dumper' => 0,
+        'FindBin' => 0,
         'Test::More' => 0,
+        'Test::Exception' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Statistics-Descriptive-LogScale-*' },
