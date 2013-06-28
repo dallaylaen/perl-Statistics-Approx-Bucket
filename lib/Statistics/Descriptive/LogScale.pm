@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.05;
+our $VERSION = 0.0501;
 
 =head1 SYNOPSIS
 
@@ -217,7 +217,7 @@ Return sum of all data points.
 
 sub sum {
 	my $self = shift;
-	return $self->sum_func(sub { $_[0] });
+	return $self->sum_of(sub { $_[0] });
 };
 
 =head2 sumsq()
@@ -228,7 +228,7 @@ Return sum of squares of all datapoints.
 
 sub sumsq {
 	my $self = shift;
-	return $self->sum_func(sub { $_[0] * $_[0] });
+	return $self->sum_of(sub { $_[0] * $_[0] });
 };
 
 =head2 mean()
@@ -381,7 +381,7 @@ sub harmonic_mean {
 
 	my $ret;
 	eval {
-		$ret = $self->count / $self->sum_func(sub { 1/$_[0] });
+		$ret = $self->count / $self->sum_of(sub { 1/$_[0] });
 	};
 	if ($@ and $@ !~ /division.*zero/) {
 		die $@; # rethrow ALL BUT 1/0 which yields undef
@@ -405,7 +405,7 @@ sub geometric_mean {
 
 	return 0 if $self->{data}{0};
 	# this must be dog slow, but we already log() too much at this point.
-	my $ret = exp( $self->sum_func( sub { log abs $_[0] } ) / $self->{count} );
+	my $ret = exp( $self->sum_of( sub { log abs $_[0] } ) / $self->{count} );
 	return $self->min < 0 ? -$ret : $ret;
 };
 
@@ -484,7 +484,7 @@ sub central_moment {
 	my $n = shift;
 
 	my $mean = $self->mean;
-	return $self->sum_func(sub{ ($_[0] - $mean) ** $n }) / $self->{count};
+	return $self->sum_of(sub{ ($_[0] - $mean) ** $n }) / $self->{count};
 };
 
 =head2 std_moment( $n )
@@ -500,7 +500,7 @@ sub std_moment {
 
 	my $mean = $self->mean;
 	my $dev = $self->std_dev;
-	return $self->sum_func(sub{ ($_[0] - $mean) ** $n })
+	return $self->sum_of(sub{ ($_[0] - $mean) ** $n })
 		/ ( $dev**$n * $self->{count} );
 };
 
@@ -650,24 +650,6 @@ sub mean_of {
 	return $self->sum_of($code, $min, $max) / $weight;
 };
 
-=head2 sum_func( $code )
-
-Return sum of $code->($_) across all data. $code is expected to have no side
-effects and only depend on its input.
-
-=cut
-
-sub sum_func {
-	my $self = shift;
-	my ($code) = @_;
-
-	my $sum = 0;
-	while (my ($val, $count) = each %{ $self->{data} }) {
-		$sum += $count * $code->( $val );
-	};
-	return $sum;
-};
-
 # We'll keep methods' returned values under {cache}.
 # All setters destroy said cache altogether.
 # PLEASE replace this with a ready-made module if there's one.
@@ -737,20 +719,32 @@ Values in the edge buckets are cut using interpolation if needed.
 NOTE: sum_of(sub{1}, $a, $b) would return rough nubmer of data points
  between $a and $b.
 
+EXPERIMENTAL. The method name may change in the future.
+
 =cut
 
 sub sum_of {
 	my $self = shift;
 	my ($code, $realmin, $realmax) = @_;
 
-	return 0 if( defined $realmin and defined $realmax
-		and $realmin >= $realmax );
+	# Just app up stuff
+	if (!defined $realmin and !defined $realmax) {
+		my $sum = 0;
+		while (my ($val, $count) = each %{ $self->{data} }) {
+			$sum += $count * $code->( $val );
+		};
+		return $sum;
+	};
+
+	$realmin = "-inf" unless defined $realmin;
+	$realmax =  "inf" unless defined $realmax;
+	return 0 if( $realmin >= $realmax );
 
 	# correct limits. $min, $max are indices; $left, $right are limits
-	my $min   = defined $realmin ? $self->_round($realmin) : "-inf";
-	my $max   = defined $realmax ? $self->_round($realmax) : "+inf";
-	my $left  = defined $realmin ? $self->_lower($realmin) : "-inf";
-	my $right = defined $realmax ? $self->_upper($realmax) : "+inf";
+	my $min   = $self->_round($realmin);
+	my $max   = $self->_round($realmax);
+	my $left  = $self->_lower($realmin);
+	my $right = $self->_upper($realmax);
 
 	# find first bucket that's above $left
 	my $keys = $self->_sort;
@@ -769,7 +763,7 @@ sub sum_of {
 	# min and max are now used as indices
 	# if min or max hits 0, we cut it in half (i.e. into equal 0+ and 0-)
 	# warn "Add up, sum_of = $sum";
-	if (defined $realmax and $self->{data}{$max}) {
+	if ($self->{data}{$max}) {
 		my $width = $self->_upper($max) - $self->_lower($max);
 		my $part = $width
 			? ($self->_upper($max) - $realmax) / $width
@@ -777,7 +771,7 @@ sub sum_of {
 		$sum -= $self->{data}{$max} * $code->($max) * $part;
 	};
 	# warn "Cut R,  sum_of = $sum";
-	if (defined $realmin and $self->{data}{$min}) {
+	if ($self->{data}{$min}) {
 		my $width = $self->_upper($min) - $self->_lower($min);
 		my $part = $width
 			? ($realmin - $self->_lower($min)) / $width
