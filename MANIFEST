@@ -23,3 +23,4 @@ example/gen-sample.pl
 example/histogram.pl
 t/10-bin_search_private.t
 t/11-skew-kurt.t
+example/png-histogram.pl
