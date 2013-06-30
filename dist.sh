@@ -19,6 +19,7 @@ perl Makefile.PL || die "perl makefile fails"
 make || die "make fails"
 VER=`perl -MYAML=LoadFile -we 'print LoadFile(shift)->{version}' MYMETA.yml`
 [ -z "$VER" ] && die "No version found" 
+grep "^[ \t]*$VER" Changes || die "Version $VER not present in Changes"
 
 echo "Version $VER..."
 
@@ -34,17 +35,19 @@ USED=`perl -wle 'for(@ARGV) { $m=$_; s#::#/#g; -f "lib/$_.pm" or print $m }' $US
 
 [ -z "$USED" ] || die "Used modules not in prereq: $USED"
 
-exit
 # check make test on several perls
 FAILS=
 for i in $PERLS; do
-	perlbrew switch "$i" || continue
+	perlbrew switch "perl-$i" || continue
 	prove -I lib t/ || FAILS="$FAILS $i"
 done
 
 # perlbrew switch-off
-$ prove -I lib t/ || FAILS="$FAILS system-perl"
+prove -I lib t/ || FAILS="$FAILS system-perl"
 
 [ \! -z "$FAILS" ] && die "Tests failed under perls $FAILS"
 
-grep "^[ \t]*$VER" Changes || die "Version $VER not present in Changes"
+# OK, now tag && make dist
+
+git tag "v.$VER" -m "Version $VER released"
+make dist
