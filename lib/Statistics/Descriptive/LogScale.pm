@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0506;
+our $VERSION = 0.0507;
 
 =head1 SYNOPSIS
 
@@ -594,7 +594,7 @@ sub frequency_distribution_ref {
 	for (my $i = 0; $i<@$index-1; $i++) {
 		push @count, $self->_count( $index->[$i], $index->[$i+1] );
 	};
-	shift $index; # remove -inf
+	shift @$index; # remove -inf
 
 	my %hash;
 	@hash{@$index} = @count;
