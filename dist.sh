@@ -35,6 +35,9 @@ USED=`perl -wle 'for(@ARGV) { $m=$_; s#::#/#g; -f "lib/$_.pm" or print $m }' $US
 
 [ -z "$USED" ] || die "Used modules not in prereq: $USED"
 
+# also check kwalitee
+prove -Ilib xt/ || die "kwalitee tests fail"
+
 # check make test on several perls
 FAILS=
 source ~/perl5/perlbrew/etc/bashrc
@@ -44,7 +47,7 @@ for i in $PERLS; do
 	prove -I lib t/ || FAILS="$FAILS $i"
 done
 
-# perlbrew switch-off
+perlbrew switch-off
 prove -I lib t/ || FAILS="$FAILS system-perl"
 
 [ \! -z "$FAILS" ] && die "Tests failed under perls $FAILS"
