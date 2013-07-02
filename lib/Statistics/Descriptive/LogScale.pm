@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0507;
+our $VERSION = 0.0508;
 
 =head1 SYNOPSIS
 
@@ -65,6 +65,9 @@ use fields qw(
 	count
 	cache
 );
+
+# This is for infinite portability^W^W portable infinity
+my $inf = 9**9**9;
 
 =head2 new( %options )
 
@@ -588,7 +591,7 @@ sub frequency_distribution_ref {
 		$index = [ map { $min + $_ * $step } 1..$index ];
 	};
 
-	@$index = ("-inf", sort { $a <=> $b } @$index);
+	@$index = (-$inf, sort { $a <=> $b } @$index);
 
 	my @count;
 	for (my $i = 0; $i<@$index-1; $i++) {
@@ -715,8 +718,8 @@ sub sum_of {
 		return $sum;
 	};
 
-	$realmin = "-inf" unless defined $realmin;
-	$realmax =  "inf" unless defined $realmax;
+	$realmin = -$inf unless defined $realmin;
+	$realmax =  $inf unless defined $realmax;
 	return 0 if( $realmin >= $realmax );
 
 	# correct limits. $min, $max are indices; $left, $right are limits
