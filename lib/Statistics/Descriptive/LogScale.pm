@@ -14,7 +14,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0509;
+our $VERSION = 0.0510;
 
 =head1 SYNOPSIS
 
@@ -690,6 +690,11 @@ sub mean_of {
 	return $self->sum_of($code, $min, $max) / $weight;
 };
 
+=head1 Experimental methods
+
+These methods may be subject to change in the future, or stay, if they
+are good.
+
 =head2 sum_of ( $code, [ $min, $max ] )
 
 Integrate arbitrary function over the sample within the [ $min, $max ] interval.
@@ -764,6 +769,78 @@ sub sum_of {
 	return $sum;
 }; # end sum_of
 
+=head2 histogram ( %options )
+
+Returns array of form [ [ count0_1, x0, x1 ], [count1_2, x1, x2 ], ... ]
+where countX_Y is number of data points between X and Y.
+
+options may include:
+
+=over
+
+=item * count (+) - number of intervals to divide sample into.
+
+=item * index (+) - interval borders as array. Will be sorted before processing.
+
+=item * min - ignore values below this. default = max + epsilon.
+
+=item * max - ignore values above this. default = min - epsilon.
+
+=item * ltrim - ignore this % of values on lower end.
+
+=item * rtrim - ignore this % of values on upper end.
+
+=back
+
+Either count or index must be present.
+
+NOTE: this is equivalent to frequency_distribution_ref but better suited
+for omitting sample tails and outputting pretty pictures.
+
+=cut
+
+sub histogram {
+	my $self = shift;
+	my %opt = @_;
+
+	# preprocess boundaries
+	my $min = defined $opt{min} ? $opt{min} : $self->_lower( $self->min );
+	my $max = defined $opt{max} ? $opt{max} : $self->_upper( $self->max );
+
+	if ($opt{ltrim}) {
+		my $newmin = $self->percentile( $opt{ltrim} );
+		$newmin < $min and $min = $newmin;
+	};
+	if ($opt{utrim}) {
+		my $newmax = $self->percentile( $opt{utrim} );
+		$newmax > $max and $max = $newmax;
+	};
+
+	# build/check index
+	my @index = @{ $opt{index} || [] };
+	if (!@index) {
+		my $n = $opt{count};
+		$n > 0 or croak (__PACKAGE__.": histogram: insufficient options (count < 1 )");
+		my $step = ($max - $min) / $n;
+		for (my $x = $min; $x <= $max; $x += $step) {
+			push @index, $x;
+		};
+	} else {
+		# sort & uniq raw index
+		my %known;
+		@index = grep { !$known{$_}++ } @index;
+		@index = sort { $a <=> $b } @index;
+		@index > 1 or croak (__PACKAGE__.": histogram: insufficient options (index < 2)");
+	};
+
+	# finally: estimated counts between indices!
+	my @ret;
+	for ( my $i = 0; $i<@index-1; $i++) {
+		my $count = $self->_count( $index[$i], $index[$i+1] );
+		push @ret, [ $count, $index[$i], $index[$i+1] ];
+	};
+	return \@ret;
+};
 
 # We'll keep methods' returned values under {cache}.
 # All setters destroy said cache altogether.
