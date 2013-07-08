@@ -14,7 +14,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0510;
+our $VERSION = 0.0511;
 
 =head1 SYNOPSIS
 
@@ -809,11 +809,11 @@ sub histogram {
 
 	if ($opt{ltrim}) {
 		my $newmin = $self->percentile( $opt{ltrim} );
-		$newmin < $min and $min = $newmin;
+		defined $newmin and $newmin > $min and $min = $newmin;
 	};
 	if ($opt{utrim}) {
-		my $newmax = $self->percentile( $opt{utrim} );
-		$newmax > $max and $max = $newmax;
+		my $newmax = $self->percentile( 100-$opt{utrim} );
+		defined $newmax and $newmax < $max and $max = $newmax;
 	};
 
 	# build/check index

@@ -17,7 +17,10 @@ GetOptions (
 	'floor=s' => \$opt{zero},
 	'width=s' => \$opt{width},
 	'height=s' => \$opt{height},
-	'trim=s' => \$opt{trim},
+	'ltrim=s' => \$opt{ltrim},
+	'utrim=s' => \$opt{utrim},
+	'min=s' => \$opt{min},
+	'max=s' => \$opt{max},
 	'help' => sub {
 		print "Usage: $0 [--base <1+small o> --floor <nnn>] pic.png\n";
 		print "Read numbers from STDIN, output histogram\n";
@@ -46,27 +49,13 @@ while (<STDIN>) {
 
 my ($width, $height) = @opt{"width", "height"};
 
-my $start = $stat->percentile($opt{trim}) // $stat->_lower($stat->min);
-my $end = $stat->percentile(100-$opt{trim});
-my $step = ($end - $start) / $width;
-my @index = map { $start + $step * $_ } 0..$width;
-
-# warn "Working on $start..$end: @index\n";
-
-# preprocess histogram
-my $hist_hash = $stat->frequency_distribution_ref(\@index);
-
-# warn "hist = ".join " ", map { sprintf "%0.2f:%0.1f", $_, $hist_hash->{$_} }
-#	sort { $a <=> $b } keys %$hist_hash;
-
-my @hist = map { $hist_hash->{$_} } sort { $a <=> $b } keys %$hist_hash;
-shift @hist;
+my $hist = $stat->histogram( %opt, count => $width);
 
 my $trimmer = Statistics::Descriptive::LogScale->new;
-$trimmer->add_data(@hist);
+$trimmer->add_data(map { $_->[0]} @$hist);
 
 my $max = $trimmer->percentile(99)/0.7;
-$_ /= $max for @hist;
+$_->[0] /= $max for @$hist;
 
 # warn "hist = @hist\n";
 # draw!
@@ -75,9 +64,9 @@ $gd->bgcolor('white');
 $gd->clear;
 
 my $i=0;
-foreach (@hist) {
-	$gd->fgcolor( $_ > 1 ? 'red' : 'orange');
-	$gd->line($i, $height, $i, $height*(1-$_));
+foreach (@$hist) {
+	$gd->fgcolor( $_->[0] > 1 ? 'red' : 'orange');
+	$gd->line($i, $height, $i, $height*(1-$_->[0]));
 	$i++;
 };
 
