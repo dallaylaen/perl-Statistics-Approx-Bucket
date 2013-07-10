@@ -28,3 +28,4 @@ example/stat.psgi
 dist.sh
 TODO
 t/12-bounds.t
+t/13-scale.t

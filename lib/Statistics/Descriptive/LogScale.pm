@@ -14,7 +14,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0512;
+our $VERSION = 0.0513;
 
 =head1 SYNOPSIS
 
@@ -667,6 +667,27 @@ sub get_data_hash {
 	my $hash = {%{ $self->{data} }};
 	return $hash;
 
+};
+
+=head2 scale_sample( $scale )
+
+Multiply all buckets' counts by given value. This can be used to adjust
+significance of previous data before adding new data (e.g. gradually
+"forgetting" past data in a long-running application).
+
+=cut
+
+sub scale_sample {
+	my $self = shift;
+	my $factor = shift;
+	$factor > 0 or croak (__PACKAGE__.": scale_sample: factor must be positive");
+
+	delete $self->{cache};
+	foreach (@{ $self->_sort }) {
+		$self->{data}{$_} *= $factor;
+	};
+	$self->{count} *= $factor;
+	return $self;
 };
 
 =head2 mean_of( $code, [$min, $max] )
