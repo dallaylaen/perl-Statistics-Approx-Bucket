@@ -10,13 +10,15 @@ Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive sta
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = 0.0513;
+our $VERSION = 0.06;
 
 =head1 SYNOPSIS
+
+The basic usage is roughly the same as that of L<Statistics::Descriptive::Full>.
 
     use Statistics::Descriptive::LogScale;
     my $stat = Statistics::Descriptive::LogScale->new ();
@@ -34,11 +36,12 @@ our $VERSION = 0.0513;
 =head1 DESCRIPTION
 
 This module aims at providing some advanced statistical functions without
-storing all data in memory, at the cost of some precision loss.
+storing all data in memory, at the cost of certain (predictable) precision loss.
 
 Data is represented by a set of logarithmic buckets only storing counters.
-Data with absolute value below certain threshold ("floor") is stored in a
-special zero counter.
+Data with absolute value below certain threshold (which may be zero)
+is stored in a special zero counter.
+
 All operations are performed on the buckets, introducing relative error
 which does not, however, exceed the buckets' width ("base").
 
@@ -59,9 +62,8 @@ use Carp;
 use POSIX qw(floor);
 
 use fields qw(
-	data
+	data count
 	base logbase floor zero_thresh logfloor
-	count
 	cache
 );
 

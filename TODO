@@ -1,7 +1,7 @@
 Features TBD:
 
-* histogram(+ min, max, [rl]trim, n) returning [[ height, low, high ], ... ]
-* sample scaling (aka "forget gradually")
++ histogram(+ min, max, [rl]trim, n) returning [[ height, low, high ], ... ]
++ sample scaling (aka "forget gradually")
 * clone( + min, max, zero_thresh, base, ... )
 * cdf( $x, $y ) for intervals
 * generate (random var with $self's distribution)
