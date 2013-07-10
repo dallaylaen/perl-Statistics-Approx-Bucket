@@ -14,7 +14,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.0511;
+our $VERSION = 0.0512;
 
 =head1 SYNOPSIS
 
@@ -774,7 +774,7 @@ sub sum_of {
 Returns array of form [ [ count0_1, x0, x1 ], [count1_2, x1, x2 ], ... ]
 where countX_Y is number of data points between X and Y.
 
-options may include:
+Options may include:
 
 =over
 
@@ -803,19 +803,7 @@ sub histogram {
 	my $self = shift;
 	my %opt = @_;
 
-	# preprocess boundaries
-	my $min = defined $opt{min} ? $opt{min} : $self->_lower( $self->min );
-	my $max = defined $opt{max} ? $opt{max} : $self->_upper( $self->max );
-
-	if ($opt{ltrim}) {
-		my $newmin = $self->percentile( $opt{ltrim} );
-		defined $newmin and $newmin > $min and $min = $newmin;
-	};
-	if ($opt{utrim}) {
-		my $newmax = $self->percentile( 100-$opt{utrim} );
-		defined $newmax and $newmax < $max and $max = $newmax;
-	};
-
+	my ($min, $max) = $self->find_boundaries( %opt );
 	# build/check index
 	my @index = @{ $opt{index} || [] };
 	if (!@index) {
@@ -842,6 +830,52 @@ sub histogram {
 	return \@ret;
 };
 
+=head2 find_boundaries( %opt )
+
+Return ($min, $max) of part of sample denoted by options.
+
+Options may include:
+
+=over
+
+=item * min - ignore values below this. default = max + epsilon.
+
+=item * max - ignore values above this. default = min - epsilon.
+
+=item * ltrim - ignore this % of values on lower end.
+
+=item * rtrim - ignore this % of values on upper end.
+
+=back
+
+If no options are given, the whole sample is guaranteed to reside between
+returned values.
+
+=cut
+
+sub find_boundaries {
+	my $self = shift;
+	my %opt = @_;
+	# preprocess boundaries
+	my $min = defined $opt{min} ? $opt{min} : $self->_lower( $self->min );
+	my $max = defined $opt{max} ? $opt{max} : $self->_upper( $self->max );
+
+	if ($opt{ltrim}) {
+		my $newmin = $self->percentile( $opt{ltrim} );
+		defined $newmin and $newmin > $min and $min = $newmin;
+	};
+	if ($opt{utrim}) {
+		my $newmax = $self->percentile( 100-$opt{utrim} );
+		defined $newmax and $newmax < $max and $max = $newmax;
+	};
+
+	return ($min, $max);
+};
+
+################################################################
+#  No more public methods please
+
+# MEMOIZE
 # We'll keep methods' returned values under {cache}.
 # All setters destroy said cache altogether.
 # PLEASE replace this with a ready-made module if there's one.
