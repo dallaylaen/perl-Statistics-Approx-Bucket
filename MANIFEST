@@ -28,3 +28,4 @@ example/stat.psgi
 TODO
 t/12-bounds.t
 t/13-scale.t
+t/14-abs-rel-error.t

@@ -10,11 +10,11 @@ Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive sta
 
 =head1 VERSION
 
-Version 0.0601
+Version 0.06
 
 =cut
 
-our $VERSION = 0.0601;
+our $VERSION = 0.0602;
 
 =head1 SYNOPSIS
 
@@ -76,11 +76,15 @@ my $inf = 9**9**9;
 
 =over
 
+=item * relative_error - the desired approximation precision.
+
+=item * absolute_error - the expected precision of incoming data.
+
 =item * base - ratio of adjacent buckets. Default is 10^(1/48), which gives
-5% precision and exact decimal powers.
+5% precision and exact decimal powers. This gets overridden by relative_error.
 
 =item * zero_thresh - absolute value threshold below which everything is
-considered zero.
+considered zero. This gets overridden by absolute_error.
 
 =back
 
@@ -90,9 +94,18 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	# Sane default: about 5% precision + exact powers of 10
+	# calculate base for logarithmic buckets, use sane default (~5%) if none
+	$opt{base} = (abs($opt{relative_error}) + 1)**2
+		if $opt{relative_error};
 	$opt{base} ||= 10**(1/48);
 	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
+
+	# calculate where to switch to linear approximation
+	# the condition is: linear bucket( thresh ) ~~ log bucket( thresh )
+	# i.e. thresh * base - thresh ~~ absolute error * 2
+	# i.e. thresh ~~ absolute_error * 2 / (base - 1)
+	$opt{zero_thresh} = 2 * abs($opt{absolute_error}) / ($opt{base} - 1)
+		if $opt{absolute_error};
 	$opt{zero_thresh} ||= 0;
 	$opt{zero_thresh} >= 0
 		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
@@ -109,7 +122,14 @@ sub new {
 	$self->{abs_error2} = $self->{zero_thresh} = 0;
 	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
 
-	$self->{abs_error2} = 2*$self->{zero_thresh};
+	# divide anything below zero_thresh into odd number of buckets
+	#      not exceeding requested abs_error
+	if ($self->{zero_thresh}) {
+		$opt{absolute_error} ||= $self->{zero_thresh};
+		my $n_linear = ceil($self->{zero_thresh} / abs($opt{absolute_error}));
+		$n_linear++ unless $n_linear % 2;
+		$self->{abs_error2} = 2*($self->{zero_thresh} / $n_linear);
+	};
 
 	$self->clear;
 	return $self;
@@ -613,6 +633,32 @@ sub frequency_distribution_ref {
 The folowing methods only apply to this module, or are experimental.
 
 =cut
+
+=head2 absolute_error
+
+Returns absolute error value. This is the approximation quality near zero.
+
+B<NOTE> This value may be smaller than what was requested in constructor.
+
+=cut
+
+sub absolute_error {
+	my $self = shift;
+	return $self->{abs_error2} / 2;
+};
+
+=head2 relative_error
+
+Returns relative error value. This is the approximation quality far from zero.
+
+B<NOTE> This value may be smaller than what was requested in constructor.
+
+=cut
+
+sub relative_error {
+	my $self = shift;
+	return sqrt($self->{base}) - 1;
+};
 
 =head2 bucket_width
 
