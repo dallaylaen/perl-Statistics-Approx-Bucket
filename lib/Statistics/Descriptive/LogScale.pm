@@ -10,11 +10,11 @@ Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive sta
 
 =head1 VERSION
 
-Version 0.06
+Version 0.0601
 
 =cut
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 =head1 SYNOPSIS
 
@@ -59,11 +59,11 @@ which does not, however, exceed the buckets' width ("base").
 #     but anyway better than scanning full sample.
 
 use Carp;
-use POSIX qw(floor);
+use POSIX qw(floor ceil);
 
 use fields qw(
 	data count
-	base logbase floor zero_thresh logfloor
+	abs_error2 base logbase floor zero_thresh logfloor
 	cache
 );
 
@@ -106,8 +106,10 @@ sub new {
 	$self->{logfloor} = log $self->{floor};
 
 	# bootstrap zero_thresh - make it fit bin edge
-	$self->{zero_thresh} = 0;
+	$self->{abs_error2} = $self->{zero_thresh} = 0;
 	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
+
+	$self->{abs_error2} = 2*$self->{zero_thresh};
 
 	$self->clear;
 	return $self;
@@ -1005,36 +1007,52 @@ sub _bin_search_gt {
 	return $i;
 };
 
+# THE CORE
+# Here come the number=>bucket functions
+# round() generates bucket center
+# upper() and lower() are respective boundaries.
+# Here's the algorithm:
+# 1) determine whether bucket is linear or logarithmic
+# 2) for linear buckets, return bucket# * bucket_width (==2*absolute error)
+#         add/subtract 0.5 to get edges.
+# 3) for log buckets, return base ** bucket# with  appropriate sign
+#         multiply by precalculated constant to get edges
+#         note that +0.5 doesn't work here, since sqrt(a*b) != (a+b)/2
+# This part is fragile and can be written better
+
+# center of bucket containing x
 sub _round {
 	my $self = shift;
 	my $x = shift;
 
 	if (abs($x) <= $self->{zero_thresh}) {
-		return 0;
+		return $self->{abs_error2}
+			&& $self->{abs_error2} * floor( $x / $self->{abs_error2} + 0.5 );
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor})/ $self->{logbase});
 	my $value = $self->{base} ** $i;
 	return $x < 0 ? -$value : $value;
 };
 
-# lower, upper limits of $i-th bucket
-sub _upper {
+# lower, upper limits of bucket containing x
+sub _lower {
 	my $self = shift;
 	my $x = shift;
 
 	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{zero_thresh};
+		return $self->{abs_error2}
+			&& $self->{abs_error2} * (floor( $x / $self->{abs_error2} + 0.5) - 0.5);
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor} )/ $self->{logbase});
 	if ($x > 0) {
-		return $self->{floor} * $self->{base}**($i+1);
+		return  $self->{floor} * $self->{base}**($i);
 	} else {
-		return -$self->{floor} * $self->{base}**($i);
+		return -$self->{floor} * $self->{base}**($i+1);
 	};
 };
 
-sub _lower {
-	return -$_[0]->_upper(-$_[1]);
+sub _upper {
+	return -$_[0]->_lower(-$_[1]);
 };
 
 # build bucket index
