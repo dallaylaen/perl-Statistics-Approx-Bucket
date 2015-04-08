@@ -11,17 +11,20 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use Statistics::Descriptive::LogScale;
 
-my $base;
-my $floor;
+my %opt;
 
 # Don't require module just in case
 if ( eval { require Getopt::Long; 1; } ) {
 	Getopt::Long->import;
 	GetOptions (
-		'base=s' => \$base,
-		'floor=s' => \$floor,
+		'base=s' => \$opt{base},
+		'floor=s' => \$opt{zero_threshold},
+		'rel|rel-error=s' => \$opt{relative_error},
+		'abs|abs-error=s' => \$opt{absolute_error},
 		'help' => sub {
-			print "Usage: $0 [--base <1+small o> --floor <nnn>]\n";
+			print "Usage: $0 [options]\n";
+			print "Options: --rel <relative_error> --abs <absolute_error>\n";
+			print "    --floor <below is zero> --base <1+epsilon>\n";
 			print "Read numbers from STDIN, output stat summary\n";
 			exit 2;
 		},
@@ -30,8 +33,7 @@ if ( eval { require Getopt::Long; 1; } ) {
 	@ARGV and die "Options given, but no Getopt::Long support";
 };
 
-my $stat_l = Statistics::Descriptive::LogScale->new(
-	base => $base, zero_thresh => $floor);
+my $stat_l = Statistics::Descriptive::LogScale->new(%opt);
 my $stat_f = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {
