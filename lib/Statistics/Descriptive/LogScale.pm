@@ -14,7 +14,7 @@ Version 0.06
 
 =cut
 
-our $VERSION = 0.0602;
+our $VERSION = 0.0603;
 
 =head1 SYNOPSIS
 
@@ -38,12 +38,14 @@ The basic usage is roughly the same as that of L<Statistics::Descriptive::Full>.
 This module aims at providing some advanced statistical functions without
 storing all data in memory, at the cost of certain (predictable) precision loss.
 
-Data is represented by a set of logarithmic buckets only storing counters.
-Data with absolute value below certain threshold (which may be zero)
-is stored in a special zero counter.
+Data is represented by a set of buckets that only store counts of fitting
+data points.
+Most buckets are logarithmic, i.e. lower end / upper end ratio is constant.
+However, around zero linear approximation may be user instead
+(see "precision" and "zero_thresh" parameters in new()).
 
-All operations are performed on the buckets, introducing relative error
-which does not, however, exceed the buckets' width ("base").
+All operations are then performed on the buckets, introducing relative error
+which does not, however, exceed the buckets' relative width ("base").
 
 =head1 METHODS
 
@@ -53,7 +55,8 @@ which does not, however, exceed the buckets' width ("base").
 #  == HOW IT WORKS ==
 #  Buckets are stored in a hash: { $value => $count, ... }
 #  {base} is bucket width, {logbase} == log {base} (cache)
-#  {zero_thresh} is absolute value below which everything is zero
+#  {zero_thresh} is where we switch to equal bucket approximation
+#  {precision} is width of bucket around zero (==zero_thresh if not given)
 #  {floor} is lower bound of bucket whose center is 1. {logfloor} = log {floor}
 #  Nearly all meaningful subs have to scan all the buckets, which is bad,
 #     but anyway better than scanning full sample.
@@ -63,7 +66,7 @@ use POSIX qw(floor ceil);
 
 use fields qw(
 	data count
-	abs_error2 base logbase floor zero_thresh logfloor
+	precision base logbase floor zero_thresh logfloor
 	cache
 );
 
@@ -76,15 +79,15 @@ my $inf = 9**9**9;
 
 =over
 
-=item * relative_error - the desired approximation precision.
-
-=item * absolute_error - the expected precision of incoming data.
-
 =item * base - ratio of adjacent buckets. Default is 10^(1/48), which gives
-5% precision and exact decimal powers. This gets overridden by relative_error.
+5% precision and exact decimal powers.
+This value represents acceptable relative error in analysis results.
+
+=item * precision - width of linear buckets around zero.
+This value represents precision of incoming data.
 
 =item * zero_thresh - absolute value threshold below which everything is
-considered zero. This gets overridden by absolute_error.
+considered zero. DEPRECATED, precision overrides this.
 
 =back
 
@@ -94,9 +97,7 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	# calculate base for logarithmic buckets, use sane default (~5%) if none
-	$opt{base} = (abs($opt{relative_error}) + 1)**2
-		if $opt{relative_error};
+	# base for logarithmic buckets, use sane default (~5%) if none given
 	$opt{base} ||= 10**(1/48);
 	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
 
@@ -104,8 +105,8 @@ sub new {
 	# the condition is: linear bucket( thresh ) ~~ log bucket( thresh )
 	# i.e. thresh * base - thresh ~~ absolute error * 2
 	# i.e. thresh ~~ absolute_error * 2 / (base - 1)
-	$opt{zero_thresh} = 2 * abs($opt{absolute_error}) / ($opt{base} - 1)
-		if $opt{absolute_error};
+	$opt{zero_thresh} = abs($opt{precision}) / ($opt{base} - 1)
+		if $opt{precision};
 	$opt{zero_thresh} ||= 0;
 	$opt{zero_thresh} >= 0
 		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
@@ -113,22 +114,23 @@ sub new {
 	my $self = fields::new($class);
 
 	$self->{base} = $opt{base};
-	$self->{logbase} = log $opt{base};
-	# floor = lower limit of bucket whose center is 1.
+	# cache values to ease calculations
+	# floor = (lower end of bucket) / (center of bucket)
 	$self->{floor} = 2/(1+$opt{base});
+	$self->{logbase} = log $opt{base};
 	$self->{logfloor} = log $self->{floor};
 
 	# bootstrap zero_thresh - make it fit bin edge
-	$self->{abs_error2} = $self->{zero_thresh} = 0;
+	$self->{precision} = $self->{zero_thresh} = 0;
 	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
 
 	# divide anything below zero_thresh into odd number of buckets
-	#      not exceeding requested abs_error
+	#      not exceeding requested precision
 	if ($self->{zero_thresh}) {
-		$opt{absolute_error} ||= $self->{zero_thresh};
-		my $n_linear = ceil($self->{zero_thresh} / abs($opt{absolute_error}));
+		my $precision = $opt{precision} || 2 * $self->{zero_thresh};
+		my $n_linear = ceil(2 * $self->{zero_thresh} / abs($precision));
 		$n_linear++ unless $n_linear % 2;
-		$self->{abs_error2} = 2*($self->{zero_thresh} / $n_linear);
+		$self->{precision} = (2 * $self->{zero_thresh} / $n_linear);
 	};
 
 	$self->clear;
@@ -644,7 +646,7 @@ B<NOTE> This value may be smaller than what was requested in constructor.
 
 sub absolute_error {
 	my $self = shift;
-	return $self->{abs_error2} / 2;
+	return $self->{precision} / 2;
 };
 
 =head2 relative_error
@@ -1072,8 +1074,8 @@ sub _round {
 	my $x = shift;
 
 	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{abs_error2}
-			&& $self->{abs_error2} * floor( $x / $self->{abs_error2} + 0.5 );
+		return $self->{precision}
+			&& $self->{precision} * floor( $x / $self->{precision} + 0.5 );
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor})/ $self->{logbase});
 	my $value = $self->{base} ** $i;
@@ -1086,8 +1088,8 @@ sub _lower {
 	my $x = shift;
 
 	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{abs_error2}
-			&& $self->{abs_error2} * (floor( $x / $self->{abs_error2} + 0.5) - 0.5);
+		return $self->{precision}
+			&& $self->{precision} * (floor( $x / $self->{precision} + 0.5) - 0.5);
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor} )/ $self->{logbase});
 	if ($x > 0) {

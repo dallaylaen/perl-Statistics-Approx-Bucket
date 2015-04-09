@@ -1,5 +1,11 @@
 #!/usr/bin/env perl
 
+# This is a test that crawls over several buckets
+#    and checks if upper bound of current bucket
+#    matches lower bound of next bucket.
+# The test is set up to crawl from negative log area into linear area
+#    and then into positive log area.
+
 use strict;
 use warnings;
 use Test::More;
@@ -10,9 +16,10 @@ use Statistics::Descriptive::LogScale;
 my $eps = 1E-9;
 
 my $stat = Statistics::Descriptive::LogScale->new (
-	relative_error => 0.1, absolute_error => 0.1 );
+	base => 1.1, precision => 0.1 );
 
 my $t = -2;
+note "linear thresh = ", $stat->zero_threshold;
 
 for (1..30) {
 	my $mid = $stat->_round($t);

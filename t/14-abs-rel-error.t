@@ -7,7 +7,7 @@ use Test::More;
 use Statistics::Descriptive::LogScale;
 
 my $stat = Statistics::Descriptive::LogScale->new(
-	absolute_error => 0.5, relative_error => 0.01
+	precision => 1, base => 1.02
 );
 
 note "Real abs/rel error: ", $stat->absolute_error, " ", $stat->relative_error;
@@ -24,7 +24,7 @@ cmp_ok( $stat->relative_error, "<=", 0.01000000000001,
 $stat->add_data(-50..50);
 my $raw = $stat->get_data_hash;
 my @duplicate = grep { $raw->{$_} > 1 } sort { $a <=> $b } keys %$raw;
-is (scalar @duplicate, 0, "No duplicates in raw bucket data")
+is (scalar @duplicate, 0, "No duplicates in raw bucket data (linear)")
 	or diag "Duplicated entries: @duplicate";
 note "The hash was: ", explain($raw);
 
@@ -35,7 +35,7 @@ $stat->clear;
 $stat->add_data(map { 100 * 1.0201 ** $_ } 1..500 ); # be careful - 1.02 fails
 $raw = $stat->get_data_hash;
 @duplicate = grep { $raw->{$_} > 1 } sort { $a <=> $b } keys %$raw;
-is (scalar @duplicate, 0, "No duplicates in raw bucket data")
+is (scalar @duplicate, 0, "No duplicates in raw bucket data (log)")
 	or diag "Duplicated entries: @duplicate";
 # note "The hash was: ", explain($raw);
 
