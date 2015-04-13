@@ -18,13 +18,12 @@ if ( eval { require Getopt::Long; 1; } ) {
 	Getopt::Long->import;
 	GetOptions (
 		'base=s' => \$opt{base},
-		'floor=s' => \$opt{zero_threshold},
-		'rel|rel-error=s' => \$opt{relative_error},
-		'abs|abs-error=s' => \$opt{absolute_error},
+		'floor=s' => \$opt{zero_thresh},
+		'precision=s' => \$opt{precision},
 		'help' => sub {
 			print "Usage: $0 [options]\n";
-			print "Options: --rel <relative_error> --abs <absolute_error>\n";
-			print "    --floor <below is zero> --base <1+epsilon>\n";
+			print "Options: --base <1+epsilon> --precision <small delta>\n";
+			print "    --floor <below is zero>\n";
 			print "Read numbers from STDIN, output stat summary\n";
 			exit 2;
 		},
@@ -52,6 +51,11 @@ sub print_result {
 	};
 	for (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {
 		print side_by_side("percentile", $_);
+	};
+	my $can_size = eval { require Devel::Size; 1; };
+	if ($can_size) {
+		printf "%20s: %20s %20s\n", "Memory usage",
+			Devel::Size::total_size($stat_l), Devel::Size::total_size($stat_f);
 	};
 };
 
