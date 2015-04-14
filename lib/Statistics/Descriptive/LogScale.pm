@@ -14,7 +14,7 @@ Version 0.06
 
 =cut
 
-our $VERSION = 0.0603;
+our $VERSION = 0.0604;
 
 =head1 SYNOPSIS
 
@@ -64,6 +64,7 @@ which does not, however, exceed the buckets' relative width ("base").
 use Carp;
 use POSIX qw(floor ceil);
 
+# Fields are NOT used internally for now, so this is just a declaration
 use fields qw(
 	data count
 	precision base logbase floor zero_thresh logfloor
@@ -98,7 +99,10 @@ sub new {
 	my %opt = @_;
 
 	# base for logarithmic buckets, use sane default (~5%) if none given
+	# UGLY HACK number->string->number to avoid
+	#     future serialization inconsistencies
 	$opt{base} ||= 10**(1/48);
+	$opt{base} = 0 + "$opt{base}";
 	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
 
 	# calculate where to switch to linear approximation
@@ -106,12 +110,14 @@ sub new {
 	# i.e. thresh * base - thresh ~~ absolute error * 2
 	# i.e. thresh ~~ absolute_error * 2 / (base - 1)
 	$opt{zero_thresh} = abs($opt{precision}) / ($opt{base} - 1)
-		if $opt{precision};
+		if $opt{precision} and !$opt{zero_thresh};
 	$opt{zero_thresh} ||= 0;
 	$opt{zero_thresh} >= 0
 		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
 
-	my $self = fields::new($class);
+	# Can't use fields::new anymore
+	#    due to JSON::XS incompatibility with restricted hashes
+	my $self = bless {}, $class;
 
 	$self->{base} = $opt{base};
 	# cache values to ease calculations
@@ -719,6 +725,79 @@ sub get_data_hash {
 	my $hash = {%{ $self->{data} }};
 	return $hash;
 
+};
+
+=head2 TO_JSON()
+
+Return enough data to recreate the whole object as an unblessed hashref.
+
+This routine conforms with C<JSON::XS>, hence the name.
+Can be called as
+
+    my $str = JSON::XS->new->allow_blessed->convert_blessed->encode( $this );
+
+B<NOTE> This module DOES NOT require JSON::XS or serialize to JSON.
+It just deals with data.
+Use C<JSON::XS>, C<YAML::XS>, C<Data::Dumper> or any serializer of choice.
+
+=head2 FROM_JSON( $hashref )
+
+Static method.
+Recreates an object from unblessed hashref returned by TO_JSON.
+
+=head2 clone()
+
+Copy constructor - returns copy of an existing object.
+Cache is not preserved.
+
+=cut
+
+sub clone {
+	my $self = shift;
+	return (ref $self)->FROM_JSON( $self->TO_JSON );
+};
+
+sub TO_JSON {
+	my $self = shift;
+	return {
+		CLASS => ref $self,
+		VERSION => $VERSION,
+		base => $self->{base},
+		precision => $self->{precision},
+		zero_thresh => $self->{zero_thresh},
+		data => $self->get_data_hash,
+	};
+};
+
+sub FROM_JSON {
+	my ($class, $raw) = @_;
+
+	# first complain about imports from future and/or another class
+	carp  __PACKAGE__."::FROM_JSON(): "
+		."Attempting to recreate $raw->{CLASS} as $class"
+			unless $raw->{CLASS} eq $class;
+	carp  __PACKAGE__."::FROM_JSON(): "
+		."Attempting to recreate future version $raw->{version} under $VERSION"
+			unless $raw->{VERSION} =~ /^\d+(?:\.\d+)?$/
+				and $raw->{VERSION} <= $VERSION;
+
+	# TODO check incoming data more thoroughly
+	my @missing = grep { !defined $raw->{$_} }
+		qw(CLASS VERSION base precision data);
+	croak __PACKAGE__."::FROM_JSON(): "."Required fields missing: @missing"
+		if @missing;
+
+	# Here comes an UGLY HACK to deal with rounding
+	# threshold *= sqrt(base) is guaranteed to be truncated
+	#     to pre-serialization value
+	# It may be better to save integer values instead
+	my $self = $class->new(
+		base          => $raw->{base},
+		precision     => $raw->{precision},
+		zero_thresh   => $raw->{zero_thresh} * ( 1 + $raw->{base} ) / 2,
+	);
+	$self->add_data_hash( $raw->{data} );
+	return $self;
 };
 
 =head2 scale_sample( $scale )

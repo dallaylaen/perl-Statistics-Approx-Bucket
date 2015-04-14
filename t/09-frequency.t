@@ -29,8 +29,7 @@ cmp_ok( $std_dev, "<", 0.1, "Histogram is level");
 # check newer histogram interface
 my $hist2 = $stat->histogram(count => 5);
 my %hist2pp = map { $_->[2] => $_->[0] } @$hist2;
-is_deeply ( \%hist2pp, $hist, "histogram == freq_distr_ref");
-
+is_count_hash ( \%hist2pp, $hist, "histogram == freq_distr_ref");
 
 note "arbitrary cut: (-inf, 3, 6, 9, 12)";
 $hist  = $stat->frequency_distribution_ref([3, 6, 9, 12]);
@@ -50,12 +49,12 @@ is ($sum, $stat->count, "histogram sum == count");
 # check newer histogram interface
 $hist2 = $stat->histogram(index => [ -9**9, 3, 6, 9, 12 ]);
 %hist2pp = map { $_->[2] => $_->[0] } @$hist2;
-is_deeply ( \%hist2pp, $hist, "histogram == freq_distr_ref");
+is_count_hash ( \%hist2pp, $hist, "histogram == freq_distr_ref");
 
 $hist2 = $stat->histogram( count =>4, min => 0, max => 12 );
 note explain $hist2;
 %hist2pp = map { $_->[2] => $_->[0] } @$hist2;
-is_deeply ( \%hist2pp, $hist, "histogram == freq_distr_ref");
+is_count_hash ( \%hist2pp, $hist, "histogram == freq_distr_ref");
 
 # check hist2 chaining
 my @upper = map { $_->[2] } @$hist2;
@@ -64,3 +63,17 @@ shift @lower;
 pop @upper;
 is_deeply( \@upper, \@lower, "upper == lower");
 
+
+sub is_count_hash {
+	my ($got, $expect, $message) = @_;
+
+	my %diff;
+	$diff{$_} += $got->{$_}    for keys %$got;
+	$diff{$_} -= $expect->{$_} for keys %$expect;
+	abs($diff{$_}) > 1E-12 or delete $diff{$_} for keys %diff;
+	ok (!%diff, $message)
+		or diag "got = "  , explain $got,
+			"expected = " , explain $expect,
+			"diff = "     , explain \%diff;
+	return !%diff;
+};
