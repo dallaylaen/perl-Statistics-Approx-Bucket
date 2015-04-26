@@ -32,8 +32,7 @@ $stat->add_data(0..5);
 my $str = $serial->encode($stat);
 note "str = $str";
 
-my $stat2 = Statistics::Descriptive::LogScale->FROM_JSON(
-	$serial->decode($str) );
+my $stat2 = Statistics::Descriptive::LogScale->new(%{ $serial->decode($str) } );
 
 is( $serial->encode($stat2), $str, "JSON round trip" );
 done_testing;

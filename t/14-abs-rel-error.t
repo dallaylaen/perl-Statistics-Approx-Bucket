@@ -10,15 +10,6 @@ my $stat = Statistics::Descriptive::LogScale->new(
 	precision => 1, base => 1.02
 );
 
-note "Real abs/rel error: ", $stat->absolute_error, " ", $stat->relative_error;
-cmp_ok( $stat->absolute_error, ">", 0, "abs greater than zero" );
-cmp_ok( $stat->absolute_error, "<=", 0.5000000000001,
-	"abs error is less than requested");
-cmp_ok( $stat->relative_error, ">", 0, "rel greater than zero");
-cmp_ok( $stat->relative_error, "<=", 0.01000000000001,
-	"rel error is less than requested");
-# OK, this is an ugly rounding hack. I found no better.
-
 # Now try to add some data and see whether our class can distinguish
 # between points.
 $stat->add_data(-50..50);

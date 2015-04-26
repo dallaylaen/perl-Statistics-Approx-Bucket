@@ -35,7 +35,7 @@ sub ok_persistent {
 	my $raw = $stat1->TO_JSON;
 	my $sub;
 	foreach my $stat2 (
-		Statistics::Descriptive::LogScale->FROM_JSON($raw), $stat1->clone) {
+		Statistics::Descriptive::LogScale->new(%$raw), $stat1->clone) {
 		$sub++;
 
 		is_deeply( $stat2->TO_JSON, $raw,
@@ -51,7 +51,7 @@ sub ok_persistent {
 		};
 
 		# TODO or should I be using subtest here?
-		ok (!$fail, "TO_JSON/FROM_JSON persistence test $n_test")
+		ok (!$fail, "TO_JSON()/new() persistence test $n_test")
 			or diag "setup was: ", explain($setup), "\n",
 				, "sample was: ", explain($sample);
 	};

@@ -14,7 +14,7 @@ Version 0.06
 
 =cut
 
-our $VERSION = 0.0604;
+our $VERSION = 0.0605;
 
 =head1 SYNOPSIS
 
@@ -83,9 +83,17 @@ my $inf = 9**9**9;
 =item * base - ratio of adjacent buckets. Default is 10^(1/48), which gives
 5% precision and exact decimal powers.
 This value represents acceptable relative error in analysis results.
+B<NOTE> Actual value may be slightly less from requested one.
+This is done so to avoid troubles with future rounding in (de)serialization.
 
 =item * precision - width of linear buckets around zero.
 This value represents precision of incoming data.
+B<NOTE> Actual value may differ slightly (by no more than a factor of c<base>)
+so that borders of linear and logarithmic bins fit nicely.
+
+=item * data - hashref with { value => weight } for initializing data.
+Used for cloning.
+See add_data_hash().
 
 =item * zero_thresh - absolute value threshold below which everything is
 considered zero. DEPRECATED, precision overrides this.
@@ -128,7 +136,7 @@ sub new {
 
 	# bootstrap zero_thresh - make it fit bin edge
 	$self->{precision} = $self->{zero_thresh} = 0;
-	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
+	$self->{zero_thresh} = $self->_lower( $opt{zero_thresh} );
 
 	# divide anything below zero_thresh into odd number of buckets
 	#      not exceeding requested precision
@@ -140,6 +148,9 @@ sub new {
 	};
 
 	$self->clear;
+	if ($opt{data}) {
+		$self->add_data_hash($opt{data});
+	};
 	return $self;
 };
 
@@ -642,32 +653,6 @@ The folowing methods only apply to this module, or are experimental.
 
 =cut
 
-=head2 absolute_error
-
-Returns absolute error value. This is the approximation quality near zero.
-
-B<NOTE> This value may be smaller than what was requested in constructor.
-
-=cut
-
-sub absolute_error {
-	my $self = shift;
-	return $self->{precision} / 2;
-};
-
-=head2 relative_error
-
-Returns relative error value. This is the approximation quality far from zero.
-
-B<NOTE> This value may be smaller than what was requested in constructor.
-
-=cut
-
-sub relative_error {
-	my $self = shift;
-	return sqrt($self->{base}) - 1;
-};
-
 =head2 bucket_width
 
 Get bucket width (relative to center of bucket). Percentiles are off
@@ -740,11 +725,6 @@ B<NOTE> This module DOES NOT require JSON::XS or serialize to JSON.
 It just deals with data.
 Use C<JSON::XS>, C<YAML::XS>, C<Data::Dumper> or any serializer of choice.
 
-=head2 FROM_JSON( $hashref )
-
-Static method.
-Recreates an object from unblessed hashref returned by TO_JSON.
-
 =head2 clone()
 
 Copy constructor - returns copy of an existing object.
@@ -754,50 +734,21 @@ Cache is not preserved.
 
 sub clone {
 	my $self = shift;
-	return (ref $self)->FROM_JSON( $self->TO_JSON );
+	return (ref $self)->new( %{ $self->TO_JSON } );
 };
 
 sub TO_JSON {
 	my $self = shift;
+	# UGLY HACK Increase zero_thresh by a factor of base ** 1/10
+	# so that it's rounded down to present value
 	return {
 		CLASS => ref $self,
 		VERSION => $VERSION,
 		base => $self->{base},
 		precision => $self->{precision},
-		zero_thresh => $self->{zero_thresh},
+		zero_thresh => $self->{zero_thresh} * ($self->{base}+9)/10,
 		data => $self->get_data_hash,
 	};
-};
-
-sub FROM_JSON {
-	my ($class, $raw) = @_;
-
-	# first complain about imports from future and/or another class
-	carp  __PACKAGE__."::FROM_JSON(): "
-		."Attempting to recreate $raw->{CLASS} as $class"
-			unless $raw->{CLASS} eq $class;
-	carp  __PACKAGE__."::FROM_JSON(): "
-		."Attempting to recreate future version $raw->{version} under $VERSION"
-			unless $raw->{VERSION} =~ /^\d+(?:\.\d+)?$/
-				and $raw->{VERSION} <= $VERSION;
-
-	# TODO check incoming data more thoroughly
-	my @missing = grep { !defined $raw->{$_} }
-		qw(CLASS VERSION base precision data);
-	croak __PACKAGE__."::FROM_JSON(): "."Required fields missing: @missing"
-		if @missing;
-
-	# Here comes an UGLY HACK to deal with rounding
-	# threshold *= sqrt(base) is guaranteed to be truncated
-	#     to pre-serialization value
-	# It may be better to save integer values instead
-	my $self = $class->new(
-		base          => $raw->{base},
-		precision     => $raw->{precision},
-		zero_thresh   => $raw->{zero_thresh} * ( 1 + $raw->{base} ) / 2,
-	);
-	$self->add_data_hash( $raw->{data} );
-	return $self;
 };
 
 =head2 scale_sample( $scale )

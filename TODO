@@ -7,7 +7,7 @@ Features TBD:
 * generate (random var with $self's distribution)
 * remove_data( )
 * total_abs_error, mean_abs_error - think more
-* linear interval around zero
++ linear interval around zero
 
 Cleanup:
 
@@ -21,3 +21,8 @@ Features for discussion:
 * how to find the bulk of a distribution
 * C++/XS library
 * analysis tools (like: Your sample looks like 45% normal (100, 15) + 35% exp (100) + 20% utter rubbish)
+
+Multidimentional S::D::LogScale:
+* linear/log storage
+* correlation for 2D
+* all other stuff
