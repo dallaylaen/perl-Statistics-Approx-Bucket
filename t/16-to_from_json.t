@@ -8,8 +8,8 @@ use Test::Number::Delta within => 1E-12;
 use Statistics::Descriptive::LogScale;
 
 ok_persistent( {}, [1..5] );
-ok_persistent( { base => 1.1, precision => 0.1 }, [1..5] );
-ok_persistent( { base => 1.1, zero_thresh => 2 }, [1..5] );
+ok_persistent( { base => 1.1, linear_width => 0.1 }, [1..5] );
+ok_persistent( { base => 1.1, linear_thresh => 2 }, [1..5] );
 # ok_persistent( {}, [1..5] );
 
 my $empty = Statistics::Descriptive::LogScale->new;
@@ -18,8 +18,8 @@ my $raw = $empty->TO_JSON;
 is(     $raw->{CLASS},       ref $empty,        "[TO_JSON]: ref");
 like(   $raw->{VERSION},     qr(^\d+(\.\d+)?$), "[TO_JSON]: Version present" );
 cmp_ok( $raw->{base},        ">", 1,            "[TO_JSON]: bin base returned correctly" );
-is(     $raw->{precision},   0,                 "[TO_JSON]: Default precision = 0" );
-is(     $raw->{zero_thresh}, 0,                 "[TO_JSON]: Default zero_thresh = 0" );
+is(     $raw->{linear_width},   0,                 "[TO_JSON]: Default linear_width = 0" );
+is(     $raw->{linear_thresh}, 0,                 "[TO_JSON]: Default linear_thresh = 0" );
 
 done_testing;
 

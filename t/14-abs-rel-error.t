@@ -7,7 +7,7 @@ use Test::More;
 use Statistics::Descriptive::LogScale;
 
 my $stat = Statistics::Descriptive::LogScale->new(
-	precision => 1, base => 1.02
+	linear_width => 1, base => 1.02
 );
 
 # Now try to add some data and see whether our class can distinguish

@@ -14,7 +14,7 @@ Version 0.06
 
 =cut
 
-our $VERSION = 0.0606;
+our $VERSION = 0.0607;
 
 =head1 SYNOPSIS
 
@@ -42,7 +42,7 @@ Data is represented by a set of bins that only store counts of fitting
 data points.
 Most bins are logarithmic, i.e. lower end / upper end ratio is constant.
 However, around zero linear approximation may be user instead
-(see "precision" and "zero_thresh" parameters in new()).
+(see "linear_width" and "linear_thresh" parameters in new()).
 
 All operations are then performed on the bins, introducing relative error
 which does not, however, exceed the bins' relative width ("base").
@@ -55,8 +55,8 @@ which does not, however, exceed the bins' relative width ("base").
 #  == HOW IT WORKS ==
 #  Buckets are stored in a hash: { $value => $count, ... }
 #  {base} is bin width, {logbase} == log {base} (cache)
-#  {zero_thresh} is where we switch to equal bin approximation
-#  {precision} is width of bin around zero (==zero_thresh if not given)
+#  {linear_thresh} is where we switch to equal bin approximation
+#  {linear_width} is width of bin around zero (==linear_thresh if not given)
 #  {floor} is lower bound of bin whose center is 1. {logfloor} = log {floor}
 #  Nearly all meaningful subs have to scan all the bins, which is bad,
 #     but anyway better than scanning full sample.
@@ -67,7 +67,7 @@ use POSIX qw(floor ceil);
 # Fields are NOT used internally for now, so this is just a declaration
 use fields qw(
 	data count
-	precision base logbase floor zero_thresh logfloor
+	linear_width base logbase floor linear_thresh logfloor
 	cache
 );
 
@@ -86,17 +86,27 @@ This value represents acceptable relative error in analysis results.
 B<NOTE> Actual value may be slightly less from requested one.
 This is done so to avoid troubles with future rounding in (de)serialization.
 
-=item * precision - width of linear bins around zero.
+=item * linear_width - width of linear bins around zero.
 This value represents precision of incoming data.
-B<NOTE> Actual value may differ slightly (by no more than a factor of c<base>)
+Default is zero, i.e. we assume that the measurement is precise.
+B<NOTE> Actual value may be less (by no more than a factor of c<base>)
+so that borders of linear and logarithmic bins fit nicely.
+
+=item * linear_thresh - where to switch to linear approximation.
+If only one of linear_thresh and linear_width is given,
+the other will be calculated.
+However, user may want to specify both in some cases.
+
+B<NOTE> Actual value may be less (by no more than a factor of c<base>)
 so that borders of linear and logarithmic bins fit nicely.
 
 =item * data - hashref with { value => weight } for initializing data.
 Used for cloning.
 See add_data_hash().
 
-=item * zero_thresh - absolute value threshold below which everything is
-considered zero. DEPRECATED, precision overrides this.
+=item * linear_thresh - absolute value threshold below which everything is
+considered zero.
+DEPRECATED, linear_width and linear_threshold override this if given.
 
 =back
 
@@ -117,11 +127,17 @@ sub new {
 	# the condition is: linear bin( thresh ) ~~ log bin( thresh )
 	# i.e. thresh * base - thresh ~~ absolute error * 2
 	# i.e. thresh ~~ absolute_error * 2 / (base - 1)
-	$opt{zero_thresh} = abs($opt{precision}) / ($opt{base} - 1)
-		if $opt{precision} and !$opt{zero_thresh};
-	$opt{zero_thresh} ||= 0;
-	$opt{zero_thresh} >= 0
-		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
+	# also support legacy API (zero_thresh)
+	if (defined $opt{linear_thresh} ) {
+		$opt{linear_width} ||= $opt{linear_thresh} * ($opt{base}-1);
+	} else {
+		$opt{linear_thresh}  = $opt{zero_thresh};
+	};
+	$opt{linear_thresh} = abs($opt{linear_width}) / ($opt{base} - 1)
+		if $opt{linear_width} and !$opt{linear_thresh};
+	$opt{linear_thresh} ||= 0;
+	$opt{linear_thresh} >= 0
+		or croak __PACKAGE__.": new(): linear_thresh must be >= 0";
 
 	# Can't use fields::new anymore
 	#    due to JSON::XS incompatibility with restricted hashes
@@ -134,17 +150,17 @@ sub new {
 	$self->{logbase} = log $opt{base};
 	$self->{logfloor} = log $self->{floor};
 
-	# bootstrap zero_thresh - make it fit bin edge
-	$self->{precision} = $self->{zero_thresh} = 0;
-	$self->{zero_thresh} = $self->_lower( $opt{zero_thresh} );
+	# bootstrap linear_thresh - make it fit bin edge
+	$self->{linear_width} = $self->{linear_thresh} = 0;
+	$self->{linear_thresh} = $self->_lower( $opt{linear_thresh} );
 
-	# divide anything below zero_thresh into odd number of bins
-	#      not exceeding requested precision
-	if ($self->{zero_thresh}) {
-		my $precision = $opt{precision} || 2 * $self->{zero_thresh};
-		my $n_linear = ceil(2 * $self->{zero_thresh} / abs($precision));
+	# divide anything below linear_thresh into odd number of bins
+	#      not exceeding requested linear_width
+	if ($self->{linear_thresh}) {
+		my $linear_width = $opt{linear_width} || 2 * $self->{linear_thresh};
+		my $n_linear = ceil(2 * $self->{linear_thresh} / abs($linear_width));
 		$n_linear++ unless $n_linear % 2;
-		$self->{precision} = (2 * $self->{zero_thresh} / $n_linear);
+		$self->{linear_width} = (2 * $self->{linear_thresh} / $n_linear);
 	};
 
 	$self->clear;
@@ -656,7 +672,7 @@ The folowing methods only apply to this module, or are experimental.
 =head2 bucket_width
 
 Get bin width (relative to center of bin). Percentiles are off
-by no more than half of this.
+by no more than half of this. DEPRECATED.
 
 =cut
 
@@ -665,16 +681,35 @@ sub bucket_width {
 	return $self->{base} - 1;
 };
 
-=head2 zero_threshold
+=head2 log_base
 
-Get zero threshold. Numbers with absolute value below this are considered
-zeroes.
+Get upper/lower bound ratio for logarithmic bins.
+This represents relative precision of sample.
+
+=head2 linear_width
+
+Get width of linear buckets.
+This represents absolute precision of sample.
+
+=head2 linear_threshold
+
+Get absolute value threshold below which interpolation is switched to linear.
 
 =cut
 
-sub zero_threshold {
+sub log_base {
 	my $self = shift;
-	return $self->{zero_thresh};
+	return $self->{base};
+};
+
+sub linear_width {
+	my $self = shift;
+	return $self->{linear_width};
+};
+
+sub linear_threshold {
+	my $self = shift;
+	return $self->{linear_thresh};
 };
 
 =head2 add_data_hash ( { value => weight, ... } )
@@ -739,14 +774,14 @@ sub clone {
 
 sub TO_JSON {
 	my $self = shift;
-	# UGLY HACK Increase zero_thresh by a factor of base ** 1/10
+	# UGLY HACK Increase linear_thresh by a factor of base ** 1/10
 	# so that it's rounded down to present value
 	return {
 		CLASS => ref $self,
 		VERSION => $VERSION,
 		base => $self->{base},
-		precision => $self->{precision},
-		zero_thresh => $self->{zero_thresh} * ($self->{base}+9)/10,
+		linear_width => $self->{linear_width},
+		linear_thresh => $self->{linear_thresh} * ($self->{base}+9)/10,
 		data => $self->get_data_hash,
 	};
 };
@@ -1103,9 +1138,9 @@ sub _round {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{precision}
-			&& $self->{precision} * floor( $x / $self->{precision} + 0.5 );
+	if (abs($x) <= $self->{linear_thresh}) {
+		return $self->{linear_width}
+			&& $self->{linear_width} * floor( $x / $self->{linear_width} + 0.5 );
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor})/ $self->{logbase});
 	my $value = $self->{base} ** $i;
@@ -1117,9 +1152,9 @@ sub _lower {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{precision}
-			&& $self->{precision} * (floor( $x / $self->{precision} + 0.5) - 0.5);
+	if (abs($x) <= $self->{linear_thresh}) {
+		return $self->{linear_width}
+			&& $self->{linear_width} * (floor( $x / $self->{linear_width} + 0.5) - 0.5);
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor} )/ $self->{logbase});
 	if ($x > 0) {

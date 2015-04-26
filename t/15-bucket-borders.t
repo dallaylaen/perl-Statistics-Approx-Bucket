@@ -16,10 +16,10 @@ use Statistics::Descriptive::LogScale;
 my $eps = 1E-9;
 
 my $stat = Statistics::Descriptive::LogScale->new (
-	base => 1.1, precision => 0.1 );
+	base => 1.1, linear_width => 0.1 );
 
 my $t = -2;
-note "linear thresh = ", $stat->zero_threshold;
+note "linear thresh = ", $stat->linear_threshold;
 
 for (1..30) {
 	my $mid = $stat->_round($t);
