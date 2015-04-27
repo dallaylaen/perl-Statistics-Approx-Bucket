@@ -1,5 +1,13 @@
 Revision history for Statistics-Descriptive-LogScale
 
+0.07    Mon Apr 27 2015
+	DOC Rename buckets => bins in POD and comments
+	API Add linear approximation approximation around zero
+	    ('linear_width' and 'linear_thresh' parameters in new())
+	API Add TO_JSON() method which returns unblessed hash
+	API Add 'data' parameter to new() to add initial data
+	API Deprecate old zero handling (zero_thresh)
+
 0.06	Wed Jul 10 2013
 	TST Add png example
 	API Add histogram() - better frequency_distribution_ref

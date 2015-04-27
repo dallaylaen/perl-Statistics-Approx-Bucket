@@ -10,11 +10,11 @@ Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive sta
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = 0.06;
+our $VERSION = 0.07;
 
 =head1 SYNOPSIS
 
@@ -38,12 +38,14 @@ The basic usage is roughly the same as that of L<Statistics::Descriptive::Full>.
 This module aims at providing some advanced statistical functions without
 storing all data in memory, at the cost of certain (predictable) precision loss.
 
-Data is represented by a set of logarithmic buckets only storing counters.
-Data with absolute value below certain threshold (which may be zero)
-is stored in a special zero counter.
+Data is represented by a set of bins that only store counts of fitting
+data points.
+Most bins are logarithmic, i.e. lower end / upper end ratio is constant.
+However, around zero linear approximation may be user instead
+(see "linear_width" and "linear_thresh" parameters in new()).
 
-All operations are performed on the buckets, introducing relative error
-which does not, however, exceed the buckets' width ("base").
+All operations are then performed on the bins, introducing relative error
+which does not, however, exceed the bins' relative width ("base").
 
 =head1 METHODS
 
@@ -52,18 +54,20 @@ which does not, however, exceed the buckets' width ("base").
 ########################################################################
 #  == HOW IT WORKS ==
 #  Buckets are stored in a hash: { $value => $count, ... }
-#  {base} is bucket width, {logbase} == log {base} (cache)
-#  {zero_thresh} is absolute value below which everything is zero
-#  {floor} is lower bound of bucket whose center is 1. {logfloor} = log {floor}
-#  Nearly all meaningful subs have to scan all the buckets, which is bad,
+#  {base} is bin width, {logbase} == log {base} (cache)
+#  {linear_thresh} is where we switch to equal bin approximation
+#  {linear_width} is width of bin around zero (==linear_thresh if not given)
+#  {floor} is lower bound of bin whose center is 1. {logfloor} = log {floor}
+#  Nearly all meaningful subs have to scan all the bins, which is bad,
 #     but anyway better than scanning full sample.
 
 use Carp;
-use POSIX qw(floor);
+use POSIX qw(floor ceil);
 
+# Fields are NOT used internally for now, so this is just a declaration
 use fields qw(
 	data count
-	base logbase floor zero_thresh logfloor
+	linear_width base logbase floor linear_thresh logfloor
 	cache
 );
 
@@ -76,11 +80,33 @@ my $inf = 9**9**9;
 
 =over
 
-=item * base - ratio of adjacent buckets. Default is 10^(1/48), which gives
+=item * base - ratio of adjacent bins. Default is 10^(1/48), which gives
 5% precision and exact decimal powers.
+This value represents acceptable relative error in analysis results.
+B<NOTE> Actual value may be slightly less from requested one.
+This is done so to avoid troubles with future rounding in (de)serialization.
 
-=item * zero_thresh - absolute value threshold below which everything is
+=item * linear_width - width of linear bins around zero.
+This value represents precision of incoming data.
+Default is zero, i.e. we assume that the measurement is precise.
+B<NOTE> Actual value may be less (by no more than a factor of c<base>)
+so that borders of linear and logarithmic bins fit nicely.
+
+=item * linear_thresh - where to switch to linear approximation.
+If only one of linear_thresh and linear_width is given,
+the other will be calculated.
+However, user may want to specify both in some cases.
+
+B<NOTE> Actual value may be less (by no more than a factor of c<base>)
+so that borders of linear and logarithmic bins fit nicely.
+
+=item * data - hashref with { value => weight } for initializing data.
+Used for cloning.
+See add_data_hash().
+
+=item * linear_thresh - absolute value threshold below which everything is
 considered zero.
+DEPRECATED, linear_width and linear_threshold override this if given.
 
 =back
 
@@ -90,26 +116,57 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	# Sane default: about 5% precision + exact powers of 10
+	# base for logarithmic bins, use sane default (~5%) if none given
+	# UGLY HACK number->string->number to avoid
+	#     future serialization inconsistencies
 	$opt{base} ||= 10**(1/48);
+	$opt{base} = 0 + "$opt{base}";
 	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
-	$opt{zero_thresh} ||= 0;
-	$opt{zero_thresh} >= 0
-		or croak __PACKAGE__.": new(): zero_thresh must be >= 0";
 
-	my $self = fields::new($class);
+	# calculate where to switch to linear approximation
+	# the condition is: linear bin( thresh ) ~~ log bin( thresh )
+	# i.e. thresh * base - thresh ~~ absolute error * 2
+	# i.e. thresh ~~ absolute_error * 2 / (base - 1)
+	# also support legacy API (zero_thresh)
+	if (defined $opt{linear_thresh} ) {
+		$opt{linear_width} ||= $opt{linear_thresh} * ($opt{base}-1);
+	} else {
+		$opt{linear_thresh}  = $opt{zero_thresh};
+	};
+	$opt{linear_thresh} = abs($opt{linear_width}) / ($opt{base} - 1)
+		if $opt{linear_width} and !$opt{linear_thresh};
+	$opt{linear_thresh} ||= 0;
+	$opt{linear_thresh} >= 0
+		or croak __PACKAGE__.": new(): linear_thresh must be >= 0";
+
+	# Can't use fields::new anymore
+	#    due to JSON::XS incompatibility with restricted hashes
+	my $self = bless {}, $class;
 
 	$self->{base} = $opt{base};
-	$self->{logbase} = log $opt{base};
-	# floor = lower limit of bucket whose center is 1.
+	# cache values to ease calculations
+	# floor = (lower end of bin) / (center of bin)
 	$self->{floor} = 2/(1+$opt{base});
+	$self->{logbase} = log $opt{base};
 	$self->{logfloor} = log $self->{floor};
 
-	# bootstrap zero_thresh - make it fit bin edge
-	$self->{zero_thresh} = 0;
-	$self->{zero_thresh} = $self->_lower($opt{zero_thresh});
+	# bootstrap linear_thresh - make it fit bin edge
+	$self->{linear_width} = $self->{linear_thresh} = 0;
+	$self->{linear_thresh} = $self->_lower( $opt{linear_thresh} );
+
+	# divide anything below linear_thresh into odd number of bins
+	#      not exceeding requested linear_width
+	if ($self->{linear_thresh}) {
+		my $linear_width = $opt{linear_width} || 2 * $self->{linear_thresh};
+		my $n_linear = ceil(2 * $self->{linear_thresh} / abs($linear_width));
+		$n_linear++ unless $n_linear % 2;
+		$self->{linear_width} = (2 * $self->{linear_thresh} / $n_linear);
+	};
 
 	$self->clear;
+	if ($opt{data}) {
+		$self->add_data_hash($opt{data});
+	};
 	return $self;
 };
 
@@ -165,7 +222,7 @@ sub count {
 
 =head2 max
 
-Values of minimal and maximal buckets.
+Values of minimal and maximal bins.
 
 NOTE: Due to rounding, some of the actual inserted values may fall outside
 of the min..max range. This may change in the future.
@@ -265,7 +322,7 @@ sub standard_deviation {
 Cumulative distribution function. Returns estimated probability of
 random data point from the sample being less than $x.
 
-As a special case, cdf(0) accounts for I<half> of zeroth bucket count (if any).
+As a special case, cdf(0) accounts for I<half> of zeroth bin count (if any).
 
 Not present in Statistics::Descriptive::Full, but appears in
 L<Statistics::Descriptive::Weighted>.
@@ -302,7 +359,7 @@ sub percentile {
 
 	# dichotomize
 	# $i is lowest value >= needed
-	# $need doesnt exceed last bucket!
+	# $need doesnt exceed last bin!
 	my $i = _bin_search_ge( $self->_probability, $need );
 	return $self->_sort->[ $i ];
 };
@@ -526,17 +583,17 @@ sub _probability_density {
 	return [] unless @$index >= 2;
 
 	# FIXME AWFUL
-	# We cannot calculate mode by comparing bucket counts:
-	#   buckets differ in size, and wide ones would naturally
+	# We cannot calculate mode by comparing bin counts:
+	#   bins differ in size, and wide ones would naturally
 	#   contain more hits.
-	# However, simple division by bucket size would result in instability
-	#   around zero. Besides, zeroth bucket may have zero width.
-	# So, we add up adjacent nonempty buckets to stabilize the
+	# However, simple division by bin size would result in instability
+	#   around zero. Besides, zeroth bin may have zero width.
+	# So, we add up adjacent nonempty bins to stabilize the
 	#   damned thing a little.
 	#                   C[prev] + 2 * C[this] + C[next]
 	# As in, density = ---------------------------------
 	#                          2 * |next - prev|
-	# The egde buckets get zero instead of right/left partner,
+	# The egde bins get zero instead of right/left partner,
 	#   because life's so unfair.
 	# Still I fear it's hacky. I wish I knew better.
 	# Mode was a hell to implement.
@@ -614,8 +671,8 @@ The folowing methods only apply to this module, or are experimental.
 
 =head2 bucket_width
 
-Get bucket width (relative to center of bucket). Percentiles are off
-by no more than half of this.
+Get bin width (relative to center of bin). Percentiles are off
+by no more than half of this. DEPRECATED.
 
 =cut
 
@@ -624,16 +681,35 @@ sub bucket_width {
 	return $self->{base} - 1;
 };
 
-=head2 zero_threshold
+=head2 log_base
 
-Get zero threshold. Numbers with absolute value below this are considered
-zeroes.
+Get upper/lower bound ratio for logarithmic bins.
+This represents relative precision of sample.
+
+=head2 linear_width
+
+Get width of linear buckets.
+This represents absolute precision of sample.
+
+=head2 linear_threshold
+
+Get absolute value threshold below which interpolation is switched to linear.
 
 =cut
 
-sub zero_threshold {
+sub log_base {
 	my $self = shift;
-	return $self->{zero_thresh};
+	return $self->{base};
+};
+
+sub linear_width {
+	my $self = shift;
+	return $self->{linear_width};
+};
+
+sub linear_threshold {
+	my $self = shift;
+	return $self->{linear_thresh};
 };
 
 =head2 add_data_hash ( { value => weight, ... } )
@@ -671,9 +747,48 @@ sub get_data_hash {
 
 };
 
+=head2 TO_JSON()
+
+Return enough data to recreate the whole object as an unblessed hashref.
+
+This routine conforms with C<JSON::XS>, hence the name.
+Can be called as
+
+    my $str = JSON::XS->new->allow_blessed->convert_blessed->encode( $this );
+
+B<NOTE> This module DOES NOT require JSON::XS or serialize to JSON.
+It just deals with data.
+Use C<JSON::XS>, C<YAML::XS>, C<Data::Dumper> or any serializer of choice.
+
+=head2 clone()
+
+Copy constructor - returns copy of an existing object.
+Cache is not preserved.
+
+=cut
+
+sub clone {
+	my $self = shift;
+	return (ref $self)->new( %{ $self->TO_JSON } );
+};
+
+sub TO_JSON {
+	my $self = shift;
+	# UGLY HACK Increase linear_thresh by a factor of base ** 1/10
+	# so that it's rounded down to present value
+	return {
+		CLASS => ref $self,
+		VERSION => $VERSION,
+		base => $self->{base},
+		linear_width => $self->{linear_width},
+		linear_thresh => $self->{linear_thresh} * ($self->{base}+9)/10,
+		data => $self->get_data_hash,
+	};
+};
+
 =head2 scale_sample( $scale )
 
-Multiply all buckets' counts by given value. This can be used to adjust
+Multiply all bins' counts by given value. This can be used to adjust
 significance of previous data before adding new data (e.g. gradually
 "forgetting" past data in a long-running application).
 
@@ -699,7 +814,7 @@ Return expectation of $code over sample within given range.
 $code is expected to be a pure function (i.e. depending only on its input
 value, and having no side effects).
 
-The underlying integration mechanism only calculates $code once per bucket,
+The underlying integration mechanism only calculates $code once per bin,
 so $code should be stable as in not vary wildly over small intervals.
 
 =cut
@@ -723,7 +838,7 @@ are good.
 Integrate arbitrary function over the sample within the [ $min, $max ] interval.
 Default values for both limits are infinities of appropriate sign.
 
-Values in the edge buckets are cut using interpolation if needed.
+Values in the edge bins are cut using interpolation if needed.
 
 NOTE: sum_of(sub{1}, $a, $b) would return rough nubmer of data points
  between $a and $b.
@@ -755,12 +870,12 @@ sub sum_of {
 	my $left  = $self->_lower($realmin);
 	my $right = $self->_upper($realmax);
 
-	# find first bucket that's above $left
+	# find first bin that's above $left
 	my $keys = $self->_sort;
 	my $i = _bin_search_ge($keys, $left);
 
 	# warn "sum_of [$min, $max]";
-	# add up buckets
+	# add up bins
 	my $sum = 0;
 	for (; $i < @$keys; $i++) {
 		my $val = $keys->[$i];
@@ -972,9 +1087,9 @@ sub _count {
 	my $count = $self->_probability->[$i];
 
 	# interpolate
-	my $bucket = $self->_round( $x );
-	if (my $val = $self->{data}{$bucket}) {
-		my $width = ($upper - $bucket) * 2;
+	my $bin = $self->_round( $x );
+	if (my $val = $self->{data}{$bin}) {
+		my $width = ($upper - $bin) * 2;
 		my $part = $width ? ( ($upper - $x) / $width) : 1/2;
 		$count -= $part * $val;
 	};
@@ -1005,46 +1120,62 @@ sub _bin_search_gt {
 	return $i;
 };
 
+# THE CORE
+# Here come the number=>bin functions
+# round() generates bin center
+# upper() and lower() are respective boundaries.
+# Here's the algorithm:
+# 1) determine whether bin is linear or logarithmic
+# 2) for linear bins, return bin# * bucket_width (==2*absolute error)
+#         add/subtract 0.5 to get edges.
+# 3) for logarithmic bins, return base ** bin# with appropriate sign
+#         multiply by precalculated constant to get edges
+#         note that +0.5 doesn't work here, since sqrt(a*b) != (a+b)/2
+# This part is fragile and can be written better
+
+# center of bin containing x
 sub _round {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) <= $self->{zero_thresh}) {
-		return 0;
+	if (abs($x) <= $self->{linear_thresh}) {
+		return $self->{linear_width}
+			&& $self->{linear_width} * floor( $x / $self->{linear_width} + 0.5 );
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor})/ $self->{logbase});
 	my $value = $self->{base} ** $i;
 	return $x < 0 ? -$value : $value;
 };
 
-# lower, upper limits of $i-th bucket
-sub _upper {
+# lower, upper limits of bin containing x
+sub _lower {
 	my $self = shift;
 	my $x = shift;
 
-	if (abs($x) <= $self->{zero_thresh}) {
-		return $self->{zero_thresh};
+	if (abs($x) <= $self->{linear_thresh}) {
+		return $self->{linear_width}
+			&& $self->{linear_width} * (floor( $x / $self->{linear_width} + 0.5) - 0.5);
 	};
 	my $i = floor (((log abs $x) - $self->{logfloor} )/ $self->{logbase});
 	if ($x > 0) {
-		return $self->{floor} * $self->{base}**($i+1);
+		return  $self->{floor} * $self->{base}**($i);
 	} else {
-		return -$self->{floor} * $self->{base}**($i);
+		return -$self->{floor} * $self->{base}**($i+1);
 	};
 };
 
-sub _lower {
-	return -$_[0]->_upper(-$_[1]);
+sub _upper {
+	return -$_[0]->_lower(-$_[1]);
 };
 
-# build bucket index
+# build bin index
 sub _sort {
 	my $self = shift;
 	return $self->{cache}{sorted}
 		||= [ sort { $a <=> $b } keys %{ $self->{data} } ];
 };
 
-# build cumulative bucket counts index
+# build cumulative bin counts index
 sub _probability {
 	my $self = shift;
 	return $self->{cache}{probability} ||= do {

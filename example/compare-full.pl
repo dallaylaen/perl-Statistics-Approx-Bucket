@@ -11,17 +11,19 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use Statistics::Descriptive::LogScale;
 
-my $base;
-my $floor;
+my %opt;
 
 # Don't require module just in case
 if ( eval { require Getopt::Long; 1; } ) {
 	Getopt::Long->import;
 	GetOptions (
-		'base=s' => \$base,
-		'floor=s' => \$floor,
+		'base=s' => \$opt{base},
+		'floor=s' => \$opt{zero_thresh},
+		'precision=s' => \$opt{precision},
 		'help' => sub {
-			print "Usage: $0 [--base <1+small o> --floor <nnn>]\n";
+			print "Usage: $0 [options]\n";
+			print "Options: --base <1+epsilon> --precision <small delta>\n";
+			print "    --floor <below is zero>\n";
 			print "Read numbers from STDIN, output stat summary\n";
 			exit 2;
 		},
@@ -30,8 +32,7 @@ if ( eval { require Getopt::Long; 1; } ) {
 	@ARGV and die "Options given, but no Getopt::Long support";
 };
 
-my $stat_l = Statistics::Descriptive::LogScale->new(
-	base => $base, zero_thresh => $floor);
+my $stat_l = Statistics::Descriptive::LogScale->new(%opt);
 my $stat_f = Statistics::Descriptive::Full->new();
 
 while (<STDIN>) {
@@ -50,6 +51,11 @@ sub print_result {
 	};
 	for (0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99, 99.5) {
 		print side_by_side("percentile", $_);
+	};
+	my $can_size = eval { require Devel::Size; 1; };
+	if ($can_size) {
+		printf "%20s: %20s %20s\n", "Memory usage",
+			Devel::Size::total_size($stat_l), Devel::Size::total_size($stat_f);
 	};
 };
 
