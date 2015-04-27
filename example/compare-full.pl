@@ -18,12 +18,11 @@ if ( eval { require Getopt::Long; 1; } ) {
 	Getopt::Long->import;
 	GetOptions (
 		'base=s' => \$opt{base},
-		'floor=s' => \$opt{zero_thresh},
-		'precision=s' => \$opt{precision},
+		'floor=s' => \$opt{linear_width},
+		'precision=s' => \$opt{linear_width},
 		'help' => sub {
 			print "Usage: $0 [options]\n";
 			print "Options: --base <1+epsilon> --precision <small delta>\n";
-			print "    --floor <below is zero>\n";
 			print "Read numbers from STDIN, output stat summary\n";
 			exit 2;
 		},

@@ -57,14 +57,18 @@ if ($out eq '-') {
 $opt{base} = 1+1/$opt{width} unless defined $opt{base};
 
 my $stat = Statistics::Descriptive::LogScale->new(
-	base => $opt{base}, zero_thresh => $opt{zero});
+	base => $opt{base}, linear_width => $opt{zero});
 
 while (<STDIN>) {
 	$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
 };
 
-my ($width, $height) = @opt{"width", "height"};
+if (!$stat->count) {
+	warn "No data was given, aborting.\n";
+	exit 3;
+};
 
+my ($width, $height) = @opt{"width", "height"};
 my $hist = $stat->histogram( %opt, count => $width);
 
 my $trimmer = Statistics::Descriptive::LogScale->new;
