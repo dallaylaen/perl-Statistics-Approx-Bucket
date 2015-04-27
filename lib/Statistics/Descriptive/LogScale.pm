@@ -10,11 +10,11 @@ Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive sta
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = 0.0607;
+our $VERSION = 0.07;
 
 =head1 SYNOPSIS
 
