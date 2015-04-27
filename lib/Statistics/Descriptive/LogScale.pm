@@ -6,7 +6,8 @@ package Statistics::Descriptive::LogScale;
 
 =head1 NAME
 
-Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive statistics class.
+Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive
+statistics class.
 
 =head1 VERSION
 
@@ -14,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.07;
+our $VERSION = 0.0701;
 
 =head1 SYNOPSIS
 
@@ -83,30 +84,32 @@ my $inf = 9**9**9;
 =item * base - ratio of adjacent bins. Default is 10^(1/48), which gives
 5% precision and exact decimal powers.
 This value represents acceptable relative error in analysis results.
-B<NOTE> Actual value may be slightly less from requested one.
+
+B<NOTE> Actual value may be slightly less than requested one.
 This is done so to avoid troubles with future rounding in (de)serialization.
 
 =item * linear_width - width of linear bins around zero.
 This value represents precision of incoming data.
 Default is zero, i.e. we assume that the measurement is precise.
-B<NOTE> Actual value may be less (by no more than a factor of c<base>)
+
+B<NOTE> Actual value may be less (by no more than a factor of C<base>)
 so that borders of linear and logarithmic bins fit nicely.
 
 =item * linear_thresh - where to switch to linear approximation.
-If only one of linear_thresh and linear_width is given,
+If only one of C<linear_thresh> and C<linear_width> is given,
 the other will be calculated.
 However, user may want to specify both in some cases.
 
-B<NOTE> Actual value may be less (by no more than a factor of c<base>)
+B<NOTE> Actual value may be less (by no more than a factor of C<base>)
 so that borders of linear and logarithmic bins fit nicely.
 
-=item * data - hashref with { value => weight } for initializing data.
+=item * data - hashref with C<{ value => weight }> for initializing data.
 Used for cloning.
-See add_data_hash().
+See C<add_data_hash()>.
 
 =item * linear_thresh - absolute value threshold below which everything is
 considered zero.
-DEPRECATED, linear_width and linear_threshold override this if given.
+DEPRECATED, C<linear_width> and C<linear_threshold> override this if given.
 
 =back
 
@@ -1250,6 +1253,9 @@ has given at HighLoad++ conference in Moscow, 2012.
 
 L<Statistics::Descriptive> was and is used as reference when in doubt.
 Several code snippets were shamelessly stolen from there.
+
+C<linear_width> and C<linear_threshold> parameter names were suggested by
+CountZero from http://perlmonks.org
 
 =head1 LICENSE AND COPYRIGHT
 
