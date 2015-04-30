@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0701;
+our $VERSION = 0.0702;
 
 =head1 SYNOPSIS
 
@@ -81,8 +81,8 @@ my $inf = 9**9**9;
 
 =over
 
-=item * base - ratio of adjacent bins. Default is 10^(1/48), which gives
-5% precision and exact decimal powers.
+=item * base - ratio of adjacent bins. Default is 10^(1/232), which gives
+1% precision and exact decimal powers.
 This value represents acceptable relative error in analysis results.
 
 B<NOTE> Actual value may be slightly less than requested one.
@@ -119,10 +119,10 @@ sub new {
 	my $class = shift;
 	my %opt = @_;
 
-	# base for logarithmic bins, use sane default (~5%) if none given
+	# base for logarithmic bins, sane default: +-1%, exact decimal powers
 	# UGLY HACK number->string->number to avoid
 	#     future serialization inconsistencies
-	$opt{base} ||= 10**(1/48);
+	$opt{base} ||= 10**(1/232);
 	$opt{base} = 0 + "$opt{base}";
 	$opt{base} > 1 or croak __PACKAGE__.": new(): base must be >1";
 
@@ -545,78 +545,37 @@ sub std_moment {
 =head2 mode
 
 Mode of a distribution is the most common value for a discrete distribution,
-or maximum of probability density for continuous one. We assume the
-distribution IS continuous, as we're already approximating.
+or maximum of probability density for continuous one.
 
-So we count probability density by smoothing hit counts in nearest nonempty
-intervals to stabilize it a little.
+For now we assume that the distribution IS discrete, and return the bin with
+the biggest hit count.
 
-NOTE A better algorithm is wanted. Experimental.
-
-NOTE Testing shows mode fairly unstable around zero, e.g.
-normal distribution (10,10) returns mode close to 0.
+NOTE A better algorithm is still wanted. Experimental.
+Behavior may change in the future.
 
 =cut
 
+# Naive implementation
+# Find bin w/greatest count and return it
 sub mode {
 	my $self = shift;
 
+	return if !$self->count;
+
 	my $index = $self->_sort;
-	return if (!@$index);
 	return $index->[0] if @$index == 1;
 
-	my @mode = (0, undef); # [ max_density, bucket_index ]
-	my $density = $self->_probability_density;
+	my @count = map { $self->{data}{$_} } @$index;
 
-	die "Uhhuh" unless @$index == @$density;
-
-	for my $i (0..@$index-1) {
-		$density->[$i] > $mode[0] or next;
-		$mode[0] = $density->[$i];
-		$mode[1] = $index->[$i]
+	my $max_index;
+	my $max_growth = 0;
+	for (my $i = 0; $i<@count; $i++) {
+		$count[$i] > $max_growth or next;
+		$max_index = $i;
+		$max_growth = $count[$i];
 	};
 
-	return $mode[1];
-};
-
-sub _probability_density {
-	my $self = shift;
-
-	my $index = $self->_sort;
-	return [] unless @$index >= 2;
-
-	# FIXME AWFUL
-	# We cannot calculate mode by comparing bin counts:
-	#   bins differ in size, and wide ones would naturally
-	#   contain more hits.
-	# However, simple division by bin size would result in instability
-	#   around zero. Besides, zeroth bin may have zero width.
-	# So, we add up adjacent nonempty bins to stabilize the
-	#   damned thing a little.
-	#                   C[prev] + 2 * C[this] + C[next]
-	# As in, density = ---------------------------------
-	#                          2 * |next - prev|
-	# The egde bins get zero instead of right/left partner,
-	#   because life's so unfair.
-	# Still I fear it's hacky. I wish I knew better.
-	# Mode was a hell to implement.
-
-	my $bin = $self->{data};
-	my @density;
-
-	for (my $i = 1; $i < @$index-1; $i++ ) {
-		my $count = $bin->{ $index->[$i] }
-			+ ($bin->{ $index->[$i-1] }+$bin->{ $index->[$i+1] })/2;
-		$density[$i] = $count / ($index->[$i+1] - $index->[$i-1]);
-	};
-	# special cases
-	my $count = 0 + $bin->{ $index->[0] } + $bin->{ $index->[1] } / 2;
-	$density[0] = $count / (($index->[1] - $index->[0]) * 2);
-
-	$count = $bin->{ $index->[-2] } / 2 + $bin->{ $index->[-1] } + 0;
-	push @density, $count / (($index->[-1] - $index->[-2]) * 2);
-
-	return \@density;
+	return $index->[$max_index];
 };
 
 =head2 frequency_distribution_ref( \@index )

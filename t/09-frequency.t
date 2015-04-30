@@ -67,10 +67,22 @@ is_deeply( \@upper, \@lower, "upper == lower");
 sub is_count_hash {
 	my ($got, $expect, $message) = @_;
 
+	# diff the hashes
 	my %diff;
 	$diff{$_} += $got->{$_}    for keys %$got;
 	$diff{$_} -= $expect->{$_} for keys %$expect;
+
+	# join keys that are too close
+	my @keys = sort { $a <=> $b } keys %diff;
+	for (my $i = 1; $i<@keys; $i++) {
+		($keys[$i] - $keys[$i-1]) / (abs($keys[$i]) + abs($keys[$i-1])) < 1E-12
+			or next;
+		$diff{ $keys[$i] } += delete $diff{ $keys[$i-1] };
+	};
+
+	# filter out near-zeros
 	abs($diff{$_}) > 1E-12 or delete $diff{$_} for keys %diff;
+
 	ok (!%diff, $message)
 		or diag "got = "  , explain $got,
 			"expected = " , explain $expect,
