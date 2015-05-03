@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0702;
+our $VERSION = 0.0703;
 
 =head1 SYNOPSIS
 
@@ -197,17 +197,25 @@ sub clear {
 
 Add numbers to the data pool.
 
+Returns self, so that methods can be chained.
+
+If incorrect data is given (i.e. non-numeric, undef),
+an exception is thrown and only partial data gets inserted.
+The state of object is guaranteed to remain consistent in such case.
+
+B<NOTE> Cache is reset, even if no data was actually inserted.
+
 =cut
 
 sub add_data {
 	my $self = shift;
-	return unless @_;
 
 	delete $self->{cache};
 	foreach (@_) {
-		$self->{count}++;
 		$self->{data}{ $self->_round($_) }++;
+		$self->{count}++;
 	};
+	$self;
 };
 
 =head2 count
@@ -679,6 +687,16 @@ sub linear_threshold {
 Add values with weights. This can be used to import data from other
 Statistics::Descriptive::LogScale object.
 
+Negative counts are treated as "forgetting" data.
+If a bin count goes below zero, such bin is simply discarded.
+
+Returns self, so that methods can be chained.
+
+If incorrect data is given (i.e. non-numeric, undef),
+an exception is thrown and nothing gets inserted.
+
+B<NOTE> Cache is reset, even if no data was actually inserted.
+
 =cut
 
 sub add_data_hash {
@@ -686,10 +704,30 @@ sub add_data_hash {
 	my $hash = shift;
 
 	delete $self->{cache};
-	foreach (keys %$hash) {
-		$self->{count} += $hash->{$_};
-		$self->{data}{ $self->_round($_) } += $hash->{$_};
+
+	# check incoming data for consistency
+	eval {
+		use warnings FATAL => qw(numeric);
+		no warnings qw(void);
+		defined $_ and 0+$_ for %$hash;
 	};
+	croak __PACKAGE__.": add_data_hash failed: $@"
+		if $@;
+
+	# update our counters
+	foreach (keys %$hash) {
+		next unless $hash->{$_};
+		my $key = $self->_round($_);
+		$self->{data}{$key} += $hash->{$_};
+		if ($self->{data}{$key} > 0) {
+			# normal insert
+			$self->{count} += $hash->{$_};
+		} else {
+			# erase empty bin, adjust count
+			$self->{count} += $hash->{$_} - delete $self->{data}{$key};
+		};
+	};
+	$self;
 };
 
 =head2 get_data_hash
@@ -1100,6 +1138,8 @@ sub _round {
 	my $self = shift;
 	my $x = shift;
 
+	use warnings FATAL => qw(numeric uninitialized);
+
 	if (abs($x) <= $self->{linear_thresh}) {
 		return $self->{linear_width}
 			&& $self->{linear_width} * floor( $x / $self->{linear_width} + 0.5 );
@@ -1113,6 +1153,8 @@ sub _round {
 sub _lower {
 	my $self = shift;
 	my $x = shift;
+
+	use warnings FATAL => qw(numeric uninitialized);
 
 	if (abs($x) <= $self->{linear_thresh}) {
 		return $self->{linear_width}
