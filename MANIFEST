@@ -33,3 +33,4 @@ t/15-bucket-borders.t
 t/16-to_from_json.t
 t/17-json-real.t
 t/18-linear-custom.t
+example/save-load.pl
