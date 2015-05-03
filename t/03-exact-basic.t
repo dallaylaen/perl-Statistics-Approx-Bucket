@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 28;
+use Test::More;
 
 use Statistics::Descriptive::LogScale;
 
@@ -33,6 +33,7 @@ is ($stat->_count(0,2), 1, "count( 2 args )");
 is ($stat->cdf(-$inf), 0, "CDF(-inf) = 0");
 is ($stat->cdf(+$inf), 1, "CDF(+inf) = 1");
 is ($stat->cdf(0), 0.4, "CDF(0) = 0.4");
+is ($stat->cdf(0, 16), 0.6, "CDF(0, inf) = 1-CDF(0)");
 note "The rest of CDF is tested by _count";
 
 my $hash = $stat->get_data_hash;
@@ -50,3 +51,4 @@ note explain $stat->{cache};
 $stat->add_data(1, 1);
 ok (!exists $stat->{cache}, "Cache deleted on add");
 
+done_testing;

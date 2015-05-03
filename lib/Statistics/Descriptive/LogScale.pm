@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0703;
+our $VERSION = 0.0704;
 
 =head1 SYNOPSIS
 
@@ -331,20 +331,24 @@ sub standard_deviation {
 =head2 cdf ($x)
 
 Cumulative distribution function. Returns estimated probability of
-random data point from the sample being less than $x.
+random data point from the sample being less than C<$x>.
 
-As a special case, cdf(0) accounts for I<half> of zeroth bin count (if any).
+As a special case, C<cdf(0)> accounts for I<half> of zeroth bin count (if any).
 
 Not present in Statistics::Descriptive::Full, but appears in
 L<Statistics::Descriptive::Weighted>.
+
+=head2 cdf ($x, $y)
+
+Returns probability of a value being between C<$x> and C<$y> ($x <= $y).
+This is essentially C<cdf($y)-cdf($x)>.
 
 =cut
 
 sub cdf {
 	my $self = shift;
-	my $x = shift;
 	return unless $self->{count};
-	return $self->_count($x) / $self->{count};
+	return $self->_count(@_) / $self->{count};
 };
 
 =head2 percentile( $n )
