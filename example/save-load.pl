@@ -16,20 +16,20 @@ use Statistics::Descriptive::LogScale;
 my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 
 # Get options
-my ($load, $save, $noread, $format);
+my (@load, $save, $noread, $format);
 my %param;
 GetOptions (
 	"f|format=s" => \$format,
 	"n" => \$noread,
-	"l=s" => \$load,
+	"l=s" => \@load,
 	"s=s" => \$save,
-	"a=s" => sub { $load = $_[1]; $save = $_[1]; },
+	"a=s" => sub { unshift @load, $_[1]; $save = $_[1]; },
 	"b|base|log-base=s" => \$param{base},
 	"w|width|linear-width=s" => \$param{linear_width},
 	"help" => \&usage,
 ) or die "Bad options. See $0 --help for usage\n";
 die "No data source: -n given, but no -l. See $0 --help for usage\n"
-	if $noread and !defined $load;
+	if $noread and !@load;
 
 sub usage {
 	print <<"USAGE";
@@ -37,7 +37,7 @@ Usage: $0 [options] [file ...]
 Read data from STDIN, load/save in JSON format, print summary
 Options may include:
     data source:
-    -l <file> - load data from JS file
+    -l <file> - load data from JS file. More than one -l may be given.
     -s <file> - save data to JS file
     -a <file> - load, then save
     -n - don't read STDIN, just load
@@ -58,11 +58,11 @@ USAGE
 
 # configure storage, load data
 my $stat;
-if (!defined $load or scalar keys %param) {
+if (!@load or scalar keys %param) {
 	$stat = Statistics::Descriptive::LogScale->new(%param);
 };
-if (defined $load) {
-	$stat = load_file($stat, $load);
+if (@load) {
+	$stat = load_file($stat, $_) for @load;
 };
 
 # read data, if needed
