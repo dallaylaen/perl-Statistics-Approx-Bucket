@@ -9,18 +9,20 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use Statistics::Descriptive::LogScale;
 
+my $load;
 my %opt = (width => 600, height => 200, trim => 0);
 
 # Don't require module just in case
 GetOptions (
-	'base=s' => \$opt{base},
-	'floor=s' => \$opt{zero},
-	'width=s' => \$opt{width},
-	'height=s' => \$opt{height},
+	'b|base=s' => \$opt{base},
+	'f|floor=s' => \$opt{zero},
+	'w|width=s' => \$opt{width},
+	'h|height=s' => \$opt{height},
 	'ltrim=s' => \$opt{ltrim},
 	'utrim=s' => \$opt{utrim},
 	'min=s' => \$opt{min},
 	'max=s' => \$opt{max},
+	'l|load=s' => \$load,
 	'help' => \&usage,
 ) or usage();
 
@@ -37,6 +39,7 @@ Options may include:
   --utrim <0..100> - cut that % off from the right
   --min <xxx> - strip data below this value
   --max <xxx> - strip data above this value
+  --load, -l - load data from a JSON file
   --help - this message
 EOF
 	exit 2;
@@ -56,11 +59,22 @@ if ($out eq '-') {
 # sane default for precision = 1 pixel at right/left side
 $opt{base} = 1+1/$opt{width} unless defined $opt{base};
 
-my $stat = Statistics::Descriptive::LogScale->new(
-	base => $opt{base}, linear_width => $opt{zero});
-
-while (<STDIN>) {
-	$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
+my $stat;
+if (defined $load) {
+	eval { require JSON::XS; 1 }
+		or die "JSON::XS is required for --load option to work\n";
+	local $/;
+	open (my $fd, "<", $load) or die "Failed to r-open $load: $!";
+	defined (my $json = <$fd>) or die "Failed to read from $load: $!";
+	close $fd;
+	my $raw = JSON::XS::decode_json($json);
+	$stat = Statistics::Descriptive::LogScale->new(%$raw);
+} else {
+	$stat = Statistics::Descriptive::LogScale->new(
+		base => $opt{base}, linear_width => $opt{zero});
+	while (<STDIN>) {
+		$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
+	};
 };
 
 if (!$stat->count) {
