@@ -13,7 +13,7 @@ at a cost of a certain predictable relative error.
 This also allows for storing the data efficiently for future analysis.
 
 This module can be used in place of  _Statistics::Descriptive::Full_
-given that exact values are not required.
+given that exact values and remembering incoming data order are not required.
 
 # SINOPSIS
 
