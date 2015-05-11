@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0707;
+our $VERSION = 0.0708;
 
 =head1 SYNOPSIS
 
@@ -242,6 +242,13 @@ These methods are used to query the distribution properties. They generally
 follow the interface of L<Statistics::Descriptive> and co,
 with minor additions.
 
+All methods return C<undef> on empty data set, except for
+C<count>, C<sum>, C<sumsq> and C<variance> which all return 0.
+
+B<NOTE> This module caches whatever it calculates very agressively.
+Don't hesitate to use statistical functions (except for sum_of/mean_of)
+more than once. The cache is deleted upon data entry.
+
 =head2 clear
 
 Destroy all stored data.
@@ -348,7 +355,7 @@ sub sumsq {
 
 =head2 mean
 
-Return mean, which is sum()/count().
+Return mean, or average value, i.e. sum()/count().
 
 =cut
 
@@ -422,6 +429,7 @@ Find $n-th percentile, i.e. a value below which lies $n % of the data.
 (see Statistics::Descriptive).
 
 $n is a real number, not necessarily integer.
+
 =cut
 
 sub percentile {
@@ -758,6 +766,7 @@ Statistics::Descriptive::LogScale object.
 
 Negative counts are treated as "forgetting" data.
 If a bin count goes below zero, such bin is simply discarded.
+Count is guaranteed to remain consistent in such case.
 
 Returns self, so that methods can be chained.
 
