@@ -40,6 +40,12 @@ foreach my $method ( @require0, @require1 ) {
 	is ($result, undef, "$method: result undefined");
 };
 
+# some special cases with args
+is ($stat->histogram(count => 100), undef, "histogram = undef");
+is ($stat->frequency_distribution_ref(index => [1..5]), undef, "frequency = undef");
+is ($stat->mean_of( \&abs ), undef, "mean_of = undef");
+is_deeply( [$stat->find_boundaries( ltrim => 0.1, rtrim => 0.1 )], [],
+	"find_boundaries = undef" );
 
 $stat->add_data(1);
 foreach my $method ( @require1 ) {

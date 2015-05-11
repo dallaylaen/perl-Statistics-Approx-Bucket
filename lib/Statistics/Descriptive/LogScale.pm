@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0706;
+our $VERSION = 0.0707;
 
 =head1 SYNOPSIS
 
@@ -673,6 +673,7 @@ sub frequency_distribution_ref {
 	my $self = shift;
 	my $index = shift;
 
+	return unless $self->count;
 	# ah, compatibility - return last value
 	return $self->{cache}{frequency_distribution_ref}
 		unless defined $index;
@@ -1009,6 +1010,7 @@ sub histogram {
 	my $self = shift;
 	my %opt = @_;
 
+	return unless $self->count;
 	my ($min, $max) = $self->find_boundaries( %opt );
 	# build/check index
 	my @index = @{ $opt{index} || [] };
@@ -1062,6 +1064,9 @@ returned values.
 sub find_boundaries {
 	my $self = shift;
 	my %opt = @_;
+
+	return unless $self->count;
+
 	# preprocess boundaries
 	my $min = defined $opt{min} ? $opt{min} : $self->_lower( $self->min );
 	my $max = defined $opt{max} ? $opt{max} : $self->_upper( $self->max );
