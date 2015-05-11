@@ -15,7 +15,7 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0705;
+our $VERSION = 0.0706;
 
 =head1 SYNOPSIS
 
@@ -321,7 +321,7 @@ Return sample range of the dataset, i.e. max() - min().
 
 sub sample_range {
 	my $self = shift;
-	return $self->max - $self->min;
+	return $self->count ? $self->max - $self->min : undef;
 };
 
 =head2 sum
@@ -532,6 +532,7 @@ Dies unless all data points are of the same sign.
 sub geometric_mean {
 	my $self = shift;
 
+	return unless $self->count;
 	croak __PACKAGE__.": geometric_mean() called on mixed sign sample"
 		if $self->min * $self->max < 0;
 

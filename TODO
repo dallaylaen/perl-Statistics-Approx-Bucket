@@ -5,7 +5,7 @@ Features TBD:
 * total_abs_error, mean_abs_error - think more
 * data inspection tools - allow user to look at real bin counts
 * framework for sophisticated algorithms over data
-* make methods work correctly with empty and 1-element samples
+* fix variance/stdev - make /(n+1) correction the default
 
 Cleanup:
 

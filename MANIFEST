@@ -36,3 +36,4 @@ t/18-linear-custom.t
 example/save-load.pl
 t/19-partial-insert.t
 README.md
+t/20-empty-dataset-consistency.t
