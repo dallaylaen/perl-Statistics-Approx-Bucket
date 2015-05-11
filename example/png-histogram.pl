@@ -82,35 +82,36 @@ if (!$stat->count) {
 	exit 3;
 };
 
+# Let's do the real work
 my ($width, $height) = @opt{"width", "height"};
 my $hist = $stat->histogram( %opt, count => $width);
 
-my $trimmer = Statistics::Descriptive::LogScale->new;
-$trimmer->add_data(map { $_->[0]} @$hist);
-
-my $max_val = $trimmer->percentile(99)/0.7;
+# Find maximum or heights
+my $max_val = $hist->[0][0];
+$_->[0] > $max_val and $max_val = $_->[0] for @$hist;
 $_->[0] /= $max_val for @$hist;
 
-# warn "hist = @hist\n";
 # draw!
 my $gd = GD::Simple->new($width, $height);
 $gd->bgcolor('white');
 $gd->clear;
 
+# draw scale
 my $scale = 10;
-
 foreach (1 .. ($scale-1)) {
 	$gd->fgcolor( 'blue' );
 	$gd->line( $width * ($_/$scale), 0, $width * ($_/$scale), $height );
 };
 
+# plot data
 my $i=0;
 foreach (@$hist) {
-	$gd->fgcolor( $_->[0] > 1 ? 'red' : 'orange');
+	$gd->fgcolor( 'orange');
 	$gd->line($i, $height, $i, $height*(1-$_->[0]));
 	$i++;
 };
 
+# finally, print digits (do it AFTER the plotting)
 my $min = $hist->[0][1];
 my $max = $hist->[-1][2];
 my $range = $max - $min;
@@ -123,4 +124,5 @@ foreach (0 .. ($scale-1)) {
 	$gd->string( sprintf("%0.1f", $min + $range*$_/$scale) );
 };
 
+# all folks
 print $fd $gd->png;

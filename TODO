@@ -6,6 +6,7 @@ Features TBD:
 * data inspection tools - allow user to look at real bin counts
 * framework for sophisticated algorithms over data
 * fix variance/stdev - make /(n+1) correction the default
+* add normalization parameter to histogram (i.e. picture height)
 
 Cleanup:
 
