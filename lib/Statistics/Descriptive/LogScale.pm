@@ -15,9 +15,11 @@ Version 0.07
 
 =cut
 
-our $VERSION = 0.0704;
+our $VERSION = 0.0705;
 
 =head1 SYNOPSIS
+
+=head2 Basic usage
 
 The basic usage is roughly the same as that of L<Statistics::Descriptive::Full>.
 
@@ -32,7 +34,68 @@ The basic usage is roughly the same as that of L<Statistics::Descriptive::Full>.
     # This can also be done in O(1) memory, precisely
     printf "Mean: %f +- %f\n", $stat->mean, $stat->standard_deviation;
     # This requires storing actual data, or approximating
+    printf "25%%  : %f\n", $stat->percentile(25);
     printf "Median: %f\n", $stat->median;
+    printf "75%%  : %f\n", $stat->percentile(75);
+
+=head2 Save/load
+
+This is not present in L<Statistics::Descriptive::Full>.
+The save/load interface is designed compatible with JSON::XS.
+However, any other serializer can be used.
+The C<TO_JSON> method is I<guaranteed> to return unblessed hashref
+with enough information to restore the original object.
+
+    use Statistics::Descriptive::LogScale;
+    my $stat = Statistics::Descriptive::LogScale->new ();
+
+    # ..... much later
+    # Save
+    print $fd encoder_of_choice( $stat->TO_JSON )
+        or die "Failed to save: $!";
+
+    # ..... and even later
+    # Load
+    my $plain_hash = decoder_of_choice( $raw_data );
+    my $copy_of_stat = Statistics::Descriptive::LogScale->new( %$plain_hash );
+
+    # Import into existing LogScale instance
+    my $plain_hash = decoder_of_choice( $more_raw_data );
+    $copy_of_stat->add_data_hash( $more_raw_data->{data} );
+
+=head2 Histograms
+
+Both L<Statistics::Descriptive::Full> and L<Statistics::Descriptive::LogScale>
+offer C<frequency_distribution_ref> method for querying data point counts.
+However, there's also C<histogram> method for making pretty pictures.
+Here's a simple text-based histogram.
+A proper GD example was too long to fit into this margin.
+
+    use strict;
+    use warnings;
+
+    use Statistics::Descriptive::LogScale;
+    my $stat = Statistics::Descriptive::LogScale->new ();
+
+    # collect/load data ...
+    my $re_float = qr([-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?);
+    while (<>) {
+        $stat->add_data($_) for m/($re_float)/g;
+    };
+    die "Empty set"
+        unless $stat->count;
+
+    # get data in [ count, lower_bound, upper_bound ] format as arrayref
+    my $hist = $stat->histogram( count => 20 );
+
+    # find maximum value to use as a scale factor
+    my $scale = $hist->[0][0];
+    $scale < $_->[0] and $scale = $_->[0] for @$hist;
+
+    foreach (@$hist) {
+        printf "%10f %s\n", $_->[1], '#' x ($_->[0] * 68 / $scale);
+    };
+    printf "%10f\n", $hist->[-1][2];
 
 =head1 DESCRIPTION
 
@@ -924,9 +987,9 @@ Options may include:
 
 =item * index (+) - interval borders as array. Will be sorted before processing.
 
-=item * min - ignore values below this. default = max + epsilon.
+=item * min - ignore values below this. Default = $self->min - epsilon.
 
-=item * max - ignore values above this. default = min - epsilon.
+=item * max - ignore values above this. Default = $self->max + epsilon.
 
 =item * ltrim - ignore this % of values on lower end.
 
