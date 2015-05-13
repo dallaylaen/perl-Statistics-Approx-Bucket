@@ -6,8 +6,8 @@ package Statistics::Descriptive::LogScale;
 
 =head1 NAME
 
-Statistics::Descriptive::LogScale - Memory-efficient approximate descriptive
-statistics class.
+Statistics::Descriptive::LogScale - Memory-efficient approximate univariate
+descriptive statistics class.
 
 =head1 VERSION
 
@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.08;
+our $VERSION = 0.0801;
 
 =head1 SYNOPSIS
 
@@ -1281,25 +1281,34 @@ Konstantin S. Uvarin, C<< <khedin at gmail.com> >>
 
 =head1 BUGS
 
-The module is currently in alpha stage. There may be bugs.
+The module is currently under development. There may be bugs.
 
-mode() is unstable around zero, better algorithm wanted.
+C<mode()> only works for discrete distributions, and simply returns
+the first bin with largest bin count.
+A better algorithm is wanted.
 
-sum_of() requires more extensive unit testing.
+C<variance()/standard_deviation()> have copied code which has to be replaced.
 
-Adding linear interpolation could result in precision gains at a little
-performance cost.
+C<sum_of()> should have been made a private method.
+Its signature and/or name may change in the future.
 
-Please report any bugs or feature requests to C<bug-statistics-descriptive-logscale at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Statistics-Descriptive-LogScale>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
+See the TODO file in the distribution package.
+
+Please feel free to post bugs and/or feature requests to github:
+L<https://github.com/dallaylaen/perl-Statistics-Descriptive-LogScale/issues/new>
+
+Alternatively, you can use CPAN RT
+via e-mail C<bug-statistics-descriptive-logscale at rt.cpan.org>,
+or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Statistics-Descriptive-LogScale>.
+
+Your contribution is appreciated.
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
     perldoc Statistics::Descriptive::LogScale
-
 
 You can also look for information at:
 
@@ -1327,7 +1336,6 @@ L<http://search.cpan.org/dist/Statistics-Descriptive-LogScale/>
 
 =back
 
-
 =head1 ACKNOWLEDGEMENTS
 
 This module was inspired by a talk that Andrew Aksyonoff, author of
@@ -1342,14 +1350,13 @@ CountZero from http://perlmonks.org
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2013 Konstantin S. Uvarin.
+Copyright 2013-2015 Konstantin S. Uvarin.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
 by the Free Software Foundation; or the Artistic License.
 
 See http://dev.perl.org/licenses/ for more information.
-
 
 =cut
 
