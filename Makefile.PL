@@ -20,7 +20,6 @@ WriteMakefile(
         'Data::Dumper' => 0,
         'FindBin' => 0,
         'Test::More' => 0,
-        'Test::Exception' => 0,
 	'Test::Number::Delta' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },

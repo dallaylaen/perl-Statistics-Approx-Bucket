@@ -2,7 +2,6 @@
 
 use strict;
 use Test::More tests => 16;
-use Test::Exception;
 use Data::Dumper;
 
 use Statistics::Descriptive::LogScale;
@@ -23,9 +22,11 @@ is ($stat->quantile(1), 2, "Q1");
 is ($stat->quantile(2), 4, "Q2");
 is ($stat->quantile(3), 8, "Q3");
 is ($stat->quantile(4), 16, "Q4");
-throws_ok {
+eval {
 	$stat->quantile(5)
-} qr(tics::Descr.*must), "Q5 dies";
+};
+my $err = $@;
+like( $err, qr(tics::Descr.*must), "Q5 dies" );
 
 # check integration...
 is ($stat->sum_of( sub{ 1 }, 2, 8, ), 2, "sum_of(1, 2, 8)");
