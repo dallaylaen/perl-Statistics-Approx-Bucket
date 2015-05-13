@@ -35,6 +35,22 @@ given that exact values and remembering incoming data order are not required.
     printf "%3uth percentile: %f\n", $_*10, $stat->percentile($_*10)
 		for 1..10;
 
+See more in the perldoc. See also example directory:
+
+* example/summary.pl - short summary
+
+* example/compare-full.pl - side-by-side comparison
+with Statistics::Descriptive::Full
+
+* example/histogram.pl - text-based histogram
+
+* example/png-histogram.pl - png histogram, can load JSON-encoded sample
+
+* example/save-load.pl - save/load sample to JSON files
+
+* example/gen-sample.pl - not really an example,
+but a clumsy random distribution generator.
+
 # DATA MODEL
 
 The data is divided into logarithmic intervals, or bins, i.e.
@@ -51,6 +67,19 @@ The threshold under which linear interpolation is used is roughly
 (precision of data)/(bin ratio).
 By default, data is assumed to be precise, so linear approximation is not used.
 
+# INSTALLATION
+
+Most likely, you need to install the latest stable version from CPAN:
+
+    cpanm Statistics::Descriptive::LogScale
+
+However, for installing this very package, the following can be used:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
 # WHY THIS MODULE
 
 Initially it was started out as a quick and dirty performance analysis tool.
@@ -63,3 +92,34 @@ as well as gradually "forget" old data.
 
 Ideally, it should become *the* tool for preliminary analysis and drawing
 funny pictures until one realises they need serious stuff like R.
+
+# BUGS AND CAVEATS
+
+This software is still under development and has not experienced enough
+usage, so there may be bugs.
+
+The error introduced by approximation have not been studied well
+enough yet. It may turn out that tweaking the model could win some precision.
+
+# SUPPORT AND DOCUMENTATION
+
+The module itself is moderately well documented, so you can use
+
+    perldoc Statistics::Descriptive::LogScale
+
+As of May 2015, you can find the latest and greatest version of this package at
+https://github.com/dallaylaen/perl-Statistics-Descriptive-LogScale
+
+Please, report bugs there, if you can. Alternatively,
+[CPAN RT](http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Descriptive-LogScale)
+is at your service.
+
+# COPYRIGHT AND LICENSE
+
+Copyright (C) 2013-2015 Konstantin S. Uvarin
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
