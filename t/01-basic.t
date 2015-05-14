@@ -1,6 +1,7 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 use strict;
+use warnings;
 use Test::More;
 use Data::Dumper;
 
@@ -10,7 +11,6 @@ my $PRECISION = 10**(1/10) - 1;
 
 my @samples = ([1..100], [-100..-1], [-10..12],
 	[map { $_ / 10 } -15..35 ]);
-plan tests => 18 * @samples;
 
 foreach (@samples) {
 	my @data = @$_;
@@ -52,7 +52,15 @@ foreach (@samples) {
 	about ($stat->mean_of(sub{$_[0]}), $mean, "Expectation of x == mean");
 	about ($stat->mean_of(sub{$_[0]*$_[0]}), $s2/$n, "Expectation of x**2");
 	about ($stat->mean_of(sub{($_[0]-$mean)**2}), $std_dev**2, "Yet another sigma");
+
+	# check variance/stdev correction
+	cmp_ok ($stat->variance, "==", $stat->variance(1), "Default Bessel correction");
+	cmp_ok ($stat->variance(1), ">", $stat->variance(0), "Correction enlarges variance");
+	cmp_ok ($stat->std_dev, "==", $stat->std_dev(1), "def. correction for stdev");
+	cmp_ok ($stat->std_dev(1), ">", $stat->std_dev(0), "Correction enlarges stdev");
 };
+
+done_testing;
 
 #######
 my $total_off;

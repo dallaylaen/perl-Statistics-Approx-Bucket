@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0801;
+our $VERSION = 0.0802;
 
 =head1 SYNOPSIS
 
@@ -243,7 +243,8 @@ follow the interface of L<Statistics::Descriptive> and co,
 with minor additions.
 
 All methods return C<undef> on empty data set, except for
-C<count>, C<sum>, C<sumsq> and C<variance> which all return 0.
+C<count>, C<sum>, C<sumsq>, C<stdandard_deviation> and C<variance>
+which all return 0.
 
 B<NOTE> This module caches whatever it calculates very agressively.
 Don't hesitate to use statistical functions (except for sum_of/mean_of)
@@ -366,36 +367,51 @@ sub mean {
 
 =head2 variance
 
+=head2 variance( $correction )
+
 Return data variance, i.e. E((x - E(x)) ** 2).
+
+Bessel's correction (division by n-1 instead of n) is used by default.
+This may be changed by specifying $correction explicitly.
+
+B<NOTE> The binning strategy used here should also introduce variance bias.
+This is not yet accounted for.
 
 =cut
 
 sub variance {
 	my $self = shift;
+	my $correction = shift;
 
-	# This part is stolen from Statistics::Descriptive
-	my $div = @_ ? 0 : 1;
-	if ($self->{count} < 1 + $div) {
-		return 0;
-	}
+	# in fact we'll receive correction='' because of how cache works
+	$correction = 1 unless defined $correction and length $correction;
+
+	return 0 if ($self->{count} < 1 + $correction);
 
 	my $var = $self->sumsq - $self->sum**2 / $self->{count};
-	return $var <= 0 ? 0 : $var / ( $self->{count} - $div );
+	return $var <= 0 ? 0 : $var / ( $self->{count} - $correction );
 };
 
 =head2 standard_deviation
 
+=head2 standard_deviation( $correction )
+
 =head2 std_dev
 
-Return standard deviation (square root of variance).
+Return standard deviation, i.e. square root of variance.
+
+Bessel's correction (division by n-1 instead of n) is used by default.
+This may be changed by specifying $correction explicitly.
+
+B<NOTE> The binning strategy used here should also introduce variance bias.
+This is not yet accounted for.
 
 =cut
 
 sub standard_deviation {
-	# This part is stolen from Statistics::Descriptive
 	my $self = shift;
-	return if (!$self->count());
-	return sqrt($self->variance());
+
+	return sqrt($self->variance(@_));
 };
 
 =head2 cdf ($x)
@@ -1140,12 +1156,12 @@ sub _memoize_method {
 }; # end of _memoize_method
 
 # Memoize all the methods w/o arguments
-foreach ( qw(sum sumsq mean min max standard_deviation mode) ) {
+foreach ( qw(sum sumsq mean min max mode) ) {
 	__PACKAGE__->_memoize_method($_);
 };
 
 # Memoize methods with 1 argument
-foreach ( qw(quantile central_moment std_moment) ) {
+foreach (qw(quantile central_moment std_moment standard_deviation variance)) {
 	__PACKAGE__->_memoize_method($_, 1);
 };
 

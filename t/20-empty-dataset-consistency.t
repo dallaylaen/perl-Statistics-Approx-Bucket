@@ -8,9 +8,9 @@ use Statistics::Descriptive::LogScale;
 my $stat = Statistics::Descriptive::LogScale->new;
 
 # methods that return 0 on emptyset
-my @ok_empty = qw(count sum sumsq variance);
+my @ok_empty = qw(count sum sumsq variance std_dev);
 # methods which won't work on empty set
-my @require0 = qw(min max sample_range mean std_dev median
+my @require0 = qw(min max sample_range mean median
 	harmonic_mean geometric_mean);
 # methods that won't work on just one data point
 my @require1 = qw(kurtosis skewness);

@@ -5,8 +5,9 @@ Features TBD:
 * total_abs_error, mean_abs_error - think more
 * data inspection tools - allow user to look at real bin counts
 * framework for sophisticated algorithms over data
-* fix variance/stdev - make /(n+1) correction the default
 * add normalization parameter to histogram (i.e. picture height)
+* add multipoint interpolation to sum_of/mean_of
+* write script for studying how mean etc converge with smaller bases
 
 Cleanup:
 
