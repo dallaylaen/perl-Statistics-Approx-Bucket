@@ -37,8 +37,10 @@ my $count = shift || 20;
 my $stat = Statistics::Descriptive::LogScale->new(
 	base => $base, zero_thresh => $floor);
 
+# use proper regex pfor numbers
+my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 while (<STDIN>) {
-	$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
+	$stat->add_data(/($re_num)/g);
 };
 
 print_result();

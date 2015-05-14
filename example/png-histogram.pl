@@ -72,8 +72,9 @@ if (defined $load) {
 } else {
 	$stat = Statistics::Descriptive::LogScale->new(
 		base => $opt{base}, linear_width => $opt{zero});
+	my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 	while (<STDIN>) {
-		$stat->add_data(/(-?\d+(?:\.\d*)?)/g);
+		$stat->add_data(/($re_num)/g);
 	};
 };
 

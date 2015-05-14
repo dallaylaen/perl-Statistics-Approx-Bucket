@@ -34,8 +34,9 @@ if ( eval { require Getopt::Long; 1; } ) {
 my $stat_l = Statistics::Descriptive::LogScale->new(%opt);
 my $stat_f = Statistics::Descriptive::Full->new();
 
+my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 while (<STDIN>) {
-	my @num = /(-?\d+(?:\.\d*)?)/g;
+	my @num = /($re_num)/g;
 	$stat_l->add_data(@num);
 	$stat_f->add_data(@num);
 #	warn "count = ".$stat_f->count;
