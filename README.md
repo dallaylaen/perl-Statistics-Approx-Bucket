@@ -49,7 +49,8 @@ with Statistics::Descriptive::Full
 * example/save-load.pl - save/load sample to JSON files
 
 * example/gen-sample.pl - not really an example,
-but a clumsy random distribution generator.
+but a clumsy random distributions generator.
+Use it to fake random test data, in case you don't have some at hand.
 
 # DATA MODEL
 
