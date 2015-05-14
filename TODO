@@ -1,13 +1,13 @@
 Features TBD:
 
-* trim data( + min, max, ... )
-* generate (random var with $self's distribution)
-* total_abs_error, mean_abs_error - think more
-* data inspection tools - allow user to look at real bin counts
-* framework for sophisticated algorithms over data
-* add normalization parameter to histogram (i.e. picture height)
-* add multipoint interpolation to sum_of/mean_of
-* write script for studying how mean etc converge with smaller bases
+* 0.05    generate (random var with $self's distribution)
+* 0.05    total_abs_error, mean_abs_error - think more
+* 0.07    data inspection tools - allow user to look at real bin counts
+* 0.07    framework for sophisticated algorithms over data
+* 0.07    add normalization parameter to histogram (i.e. picture height)
+* 0.08    add multipoint interpolation to sum_of/mean_of
+* 0.08    write script for studying how mean etc converge with smaller bases
+* 0.08    trim data( + min, max, ... )
 
 Cleanup:
 
