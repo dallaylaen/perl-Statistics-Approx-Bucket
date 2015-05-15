@@ -8,10 +8,10 @@ use strict;
 use warnings;
 
 # math functions and known distributions
-my @func    = qw(exp log sin cos sqrt abs),
+my @func    = qw(exp log sin cos sqrt abs pi atan),
 my @distr   = qw(Normal Exp Bernoulli Uniform Dice);
 my $re_num  = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
-my $white   = join "|", @func, @distr, $re_num, '[-+/*(),]', '\s+';
+my $white   = join "|", @func, @distr, $re_num, '[-+/*%(),]', '\s+';
 $white   = qr/(?:$white)/;
 
 # Usage
@@ -21,16 +21,19 @@ Usage: $0 [n1 formula1] [n2 formula2] ...
 Output n1 random numbers distributed as formula1, etc
 Formula may include: numbers, arightmetic operations and parens;
     standard functions: @func;
-    and known random distributions:
-	Normal(mean,deviation),
-	Exp(mean),
-	Bernoulli(probability),
-	Uniform(lower,upper),
-	Dice(n),
+    and known random distributions (here =nnn denotes default value):
+	Normal([mean=0,]deviation=1),
+	Exp(mean=1),
+	Bernoulli(probability=0.5),
+	Uniform([lower=0,]upper=1),
+	Dice(n=6),
 USAGE
 	exit 1;
 };
 
+# some useful functions absent in perl
+sub pi() { 4*atan2 1,1};
+sub atan($;$) {$_[1] = 1 unless defined $_[1]; return atan2 $_[0],$_[1]};
 
 my @todo;
 while (@ARGV) {
@@ -68,22 +71,31 @@ foreach (@todo) {
 
 # TODO could cache one more point, see Box-Muller transform
 sub Normal {
-	return $_[0] + $_[1] * sin(2*3.1415926539*rand()) * sqrt(-2*log(rand));
+	my $disp = pop || 1;
+	my $mean = shift || 0;
+	return $mean + $disp * sin(2*pi()*rand()) * sqrt(-2*log(rand));
 };
 
 # toss coin
 sub Bernoulli {
-	return rand() < $_[0] ? 1 : 0;
+	my $prob = shift;
+	$prob = 0.5 unless defined $prob;
+	return rand() < $prob ? 1 : 0;
 };
 
 sub Uniform {
-	return $_[0] + rand() * ($_[1] - $_[0]);
+	my ($x, $y) = @_;
+	$y ||= 0;
+	$x = 1 unless defined $x;
+	return $x + rand() * ($y - $x);
 };
 
 sub Exp {
-	return -$_[0] * log rand();
+	my $mean = shift || 1;
+	return -$mean * log rand();
 };
 
 sub Dice {
-	return int ($_[0] * rand()) + 1;
+	my $n = int (shift||0) || 6;
+	return int ($n * rand()) + 1;
 };
