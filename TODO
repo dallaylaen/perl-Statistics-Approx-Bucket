@@ -8,6 +8,7 @@ Features TBD:
 * 0.08    add multipoint interpolation to sum_of/mean_of
 * 0.08    write script for studying how mean etc converge with smaller bases
 * 0.08    trim data( + min, max, ... )
+* 0.08    add infinity abs threshold to disregard BIG values
 
 Cleanup:
 

@@ -10,7 +10,6 @@ use Statistics::Descriptive::LogScale;
 ok_persistent( {}, [1..5] );
 ok_persistent( { base => 1.1, linear_width => 0.1 }, [1..5] );
 ok_persistent( { base => 1.1, linear_thresh => 2 }, [1..5] );
-# ok_persistent( {}, [1..5] );
 
 my $empty = Statistics::Descriptive::LogScale->new;
 my $raw = $empty->TO_JSON;

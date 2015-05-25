@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0802;
+our $VERSION = 0.0803;
 
 =head1 SYNOPSIS
 
@@ -61,7 +61,7 @@ with enough information to restore the original object.
 
     # Import into existing LogScale instance
     my $plain_hash = decoder_of_choice( $more_raw_data );
-    $copy_of_stat->add_data_hash( $more_raw_data->{data} );
+    $copy_of_stat->add_data_hash( $plain_hash->{data} );
 
 =head2 Histograms
 
@@ -136,7 +136,7 @@ use fields qw(
 );
 
 # This is for infinite portability^W^W portable infinity
-my $inf = 9**9**9;
+my $INF = 9**9**9;
 
 =head2 new( %options )
 
@@ -275,6 +275,10 @@ an exception is thrown and only partial data gets inserted.
 The state of object is guaranteed to remain consistent in such case.
 
 B<NOTE> Cache is reset, even if no data was actually inserted.
+
+B<NOTE> It is possible to add infinite values to data pool.
+The module will try and calculate whatever can still be calculated.
+However, no portable way of serializing such values is done yet.
 
 =cut
 
@@ -712,7 +716,7 @@ sub frequency_distribution_ref {
 		$index = [ map { $min + $_ * $step } 1..$index ];
 	};
 
-	@$index = (-$inf, sort { $a <=> $b } @$index);
+	@$index = (-$INF, sort { $a <=> $b } @$index);
 
 	my @count;
 	for (my $i = 0; $i<@$index-1; $i++) {
@@ -777,19 +781,25 @@ sub linear_threshold {
 
 =head2 add_data_hash ( { value => weight, ... } )
 
-Add values with weights. This can be used to import data from other
+Add values with counts/weights.
+This can be used to import data from other
 Statistics::Descriptive::LogScale object.
-
-Negative counts are treated as "forgetting" data.
-If a bin count goes below zero, such bin is simply discarded.
-Count is guaranteed to remain consistent in such case.
 
 Returns self, so that methods can be chained.
 
-If incorrect data is given (i.e. non-numeric, undef),
-an exception is thrown and nothing gets inserted.
+Negative counts are allowed and treated as "forgetting" data.
+If a bin count goes below zero, such bin is simply discarded.
+Minus infinity weight is allowed and has the same effect.
+Data is guaranteed to remain consistent.
 
-B<NOTE> Cache is reset, even if no data was actually inserted.
+If incorrect data is given (i.e. non-numeric, undef, or +infinity),
+an exception is thrown and nothing changes.
+
+B<NOTE> Cache may be reset, even if no data was actually inserted.
+
+B<NOTE> It is possible to add infinite values to data pool.
+The module will try and calculate whatever can still be calculated.
+However, no portable way of serializing such values is done yet.
 
 =cut
 
@@ -797,28 +807,33 @@ sub add_data_hash {
 	my $self = shift;
 	my $hash = shift;
 
-	delete $self->{cache};
-
-	# check incoming data for consistency
+	# check incoming data for being numeric, and no +inf values
 	eval {
 		use warnings FATAL => qw(numeric);
-		no warnings qw(void);
-		defined $_ and 0+$_ for %$hash;
+		while (my ($k, $v) = each %$hash) {
+			$k == 0+$k and $v == 0+$v and $v < $INF
+				or die "Infinite count for $k\n";
+		}
 	};
 	croak __PACKAGE__.": add_data_hash failed: $@"
 		if $@;
+
+	delete $self->{cache};
 
 	# update our counters
 	foreach (keys %$hash) {
 		next unless $hash->{$_};
 		my $key = $self->_round($_);
-		$self->{data}{$key} += $hash->{$_};
-		if ($self->{data}{$key} > 0) {
+
+		# Insert data. Make sure -Inf doesn't corrupt our counter.
+		my $newcount = ($self->{data}{$key} || 0) + $hash->{$_};
+		if ($newcount > 0) {
 			# normal insert
+			$self->{data}{$key} = $newcount;
 			$self->{count} += $hash->{$_};
 		} else {
-			# erase empty bin, adjust count
-			$self->{count} += $hash->{$_} - delete $self->{data}{$key};
+			# We're "forgetting" data, AND the bin got empty
+			$self->{count} -= delete $self->{data}{$key} || 0;
 		};
 	};
 	$self;
@@ -954,8 +969,8 @@ sub sum_of {
 		return $sum;
 	};
 
-	$realmin = -$inf unless defined $realmin;
-	$realmax =  $inf unless defined $realmax;
+	$realmin = -$INF unless defined $realmin;
+	$realmax =  $INF unless defined $realmax;
 	return 0 if( $realmin >= $realmax );
 
 	# correct limits. $min, $max are indices; $left, $right are limits
@@ -1302,8 +1317,6 @@ The module is currently under development. There may be bugs.
 C<mode()> only works for discrete distributions, and simply returns
 the first bin with largest bin count.
 A better algorithm is wanted.
-
-C<variance()/standard_deviation()> have copied code which has to be replaced.
 
 C<sum_of()> should have been made a private method.
 Its signature and/or name may change in the future.

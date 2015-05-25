@@ -41,12 +41,30 @@ is ($stat->_count(1.5, 2.5), 0, "Probability of 2 as expected");
 is ($stat->_count(2.5, 3.5), 5, "Probability of 3 as expected");
 
 my $check_data = $stat->get_data_hash;
+
+# add_data_hash non-numeric insert
 eval {
 	$stat->add_data_hash( { 5=>-1, 6=>"foobar", 7 => 1} );
 };
-like ($@, qr(numeric), "Exception again (add_data_hash)");
+like ($@, qr(numeric), "Exception: non-numeric (add_data_hash)");
 is_deeply($stat->get_data_hash, $check_data, "Nothing changed - bad data");
 is_consistent($stat);
+
+# add_data_hash +inf insert
+eval {
+	$stat->add_data_hash( { 1 => 9**9**9 } );
+};
+like ($@, qr([iI]nfin), "Exception: infinity (add_data_hash)");
+is_deeply($stat->get_data_hash, $check_data, "Nothing changed - bad data");
+is_consistent($stat);
+
+
+# infinity & forgetting check
+$stat->clear;
+$stat->add_data(1, -1);
+$stat->add_data_hash({ 1 => -9**9**9, 2=>-1, 3=>-9**9**9, -1 => -3 });
+is_consistent($stat);
+is($stat->count, 0, "Destroyed all data");
 
 done_testing;
 
