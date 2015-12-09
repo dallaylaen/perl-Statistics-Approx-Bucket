@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0804;
+our $VERSION = 0.0805;
 
 =head1 SYNOPSIS
 
@@ -1131,9 +1131,9 @@ Options may include:
 
 =over
 
-=item * min - ignore values below this. default = max + epsilon.
+=item * min - ignore values below this. default = min() - epsilon.
 
-=item * max - ignore values above this. default = min - epsilon.
+=item * max - ignore values above this. default = max() + epsilon.
 
 =item * ltrim - ignore this % of values on lower end.
 
