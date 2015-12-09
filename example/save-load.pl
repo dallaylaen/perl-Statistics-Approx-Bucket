@@ -6,6 +6,7 @@ use warnings;
 use strict;
 use JSON::XS;
 use Getopt::Long;
+use Data::Dumper;
 
 # always want the local module version
 use FindBin qw($Bin);
@@ -16,14 +17,20 @@ use Statistics::Descriptive::LogScale;
 my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 
 # Get options
-my (@load, $save, $noread, $format);
+my (@load, $save, $noread, $pairs, $format);
 my %param;
+my %cut;
 GetOptions (
 	"f|format=s" => \$format,
 	"n" => \$noread,
-	"l=s" => \@load,
-	"s=s" => \$save,
-	"a=s" => sub { unshift @load, $_[1]; $save = $_[1]; },
+	"p|read-pairs" => \$pairs,
+	"l|load=s" => \@load,
+	"s|save=s" => \$save,
+	"a|append=s" => sub { unshift @load, $_[1]; $save = $_[1]; },
+	"min=s" => \$cut{min},
+	"max=s" => \$cut{max},
+	"ltrim=s" => \$cut{ltrim},
+	"utrim=s" => \$cut{utrim},
 	"b|base|log-base=s" => \$param{base},
 	"w|width|linear-width=s" => \$param{linear_width},
 	"help" => \&usage,
@@ -34,17 +41,20 @@ die "No data source: -n given, but no -l. See $0 --help for usage\n"
 sub usage {
 	print <<"USAGE";
 Usage: $0 [options] [file ...]
-Read data from STDIN, load/save in JSON format, print summary
+Read points from STDIN, load/save in JSON format, print summary.
 Options may include:
-    data source:
+    Data source:
     -l <file> - load data from JS file. More than one -l may be given.
     -s <file> - save data to JS file
     -a <file> - load, then save
     -n - don't read STDIN, just load
-    storage:
-    -b <n> - bin base for data storage. If given, -l only loads data points.
+    -p - read one (point, count) pair per STDIN line.
+    Storage:
+    -b <1.nn> - bin base for data storage. If given, -l only loads data points.
     -w <n> - minimal bin width in storage. If given, -l only loads data points.
-    summary format:
+    --min , --max - trim data before processing.
+    --ltrim, --utrim - trim that % of data from lower/upper end.
+    Summary format:
     -f <printf-like expr> - print summary
     The expression MAY contain placeholders in form %<options><X>(<n>)
     Options are the same as in printf %f, i.e. %[-][+][0][n].[n]
@@ -67,9 +77,21 @@ if (@load) {
 
 # read data, if needed
 unless ($noread) {
-	while (<>) {
-		$stat->add_data( /($re_num)/g );
+	if ($pairs) {
+		while (<>) {
+			my ($point, $count) = /($re_num)/g;
+			next unless $count;
+			$stat->add_data_hash( { $point => $count } );
+		};
+	} else {
+		while (<>) {
+			$stat->add_data( /($re_num)/g );
+		};
 	};
+};
+
+if (%cut) {
+	$stat = $stat->clone( %cut );
 };
 
 # print summary
