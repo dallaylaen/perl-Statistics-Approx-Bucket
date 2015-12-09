@@ -85,12 +85,7 @@ if (!$stat->count) {
 
 # Let's do the real work
 my ($width, $height) = @opt{"width", "height"};
-my $hist = $stat->histogram( %opt, count => $width);
-
-# Find maximum or heights
-my $max_val = $hist->[0][0];
-$_->[0] > $max_val and $max_val = $_->[0] for @$hist;
-$_->[0] /= $max_val for @$hist;
+my $hist = $stat->histogram( %opt, count => $width, normalize_to => 1);
 
 # draw!
 my $gd = GD::Simple->new($width, $height);

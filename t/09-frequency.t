@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Test::More tests => 9;
+use Test::More;
 
 use Statistics::Descriptive::LogScale;
 
@@ -63,6 +63,25 @@ shift @lower;
 pop @upper;
 is_deeply( \@upper, \@lower, "upper == lower");
 
+# checking histogram normalization
+my $hist3 = $stat->histogram(
+	count =>4, min => 0, max => 12, normalize_to => 10 );
+note explain $hist3;
+my $max = 0;
+$max < $_->[0] and $max = $_->[0] for @$hist3;
+is ($max, 10, "normalize works (max holds)");
+
+# let's spoil hist2 now and check normalize better
+$max = 0;
+$max < $_->[0] and $max = $_->[0] for @$hist2;
+$_->[0] *= 10/$max for @$hist2;
+
+my %as_hash_2 = map { ($_->[1]+$_->[2])/2, $_->[0] } @$hist2;
+my %as_hash_3 = map { ($_->[1]+$_->[2])/2, $_->[0] } @$hist3;
+
+is_count_hash( \%as_hash_3, \%as_hash_3, "normalize works (ratios hold)");
+
+done_testing;
 
 sub is_count_hash {
 	my ($got, $expect, $message) = @_;

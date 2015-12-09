@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0805;
+our $VERSION = 0.0806;
 
 =head1 SYNOPSIS
 
@@ -1082,6 +1082,9 @@ Options may include:
 
 =item * rtrim - ignore this % of values on upper end.
 
+=item * normalize_to <nnn> - adjust counts so that max number becomes nnn.
+This may be useful if one intends to draw pictures.
+
 =back
 
 Either count or index must be present.
@@ -1092,8 +1095,7 @@ for omitting sample tails and outputting pretty pictures.
 =cut
 
 sub histogram {
-	my $self = shift;
-	my %opt = @_;
+	my ($self, %opt) = @_;
 
 	return unless $self->count;
 	my ($min, $max) = $self->find_boundaries( %opt );
@@ -1120,6 +1122,16 @@ sub histogram {
 		my $count = $self->_count( $index[$i], $index[$i+1] );
 		push @ret, [ $count, $index[$i], $index[$i+1] ];
 	};
+
+	# if normalize - find maximum & divide by it
+	if (my $norm = $opt{normalize_to}) {
+		my $max = 0;
+		$max < $_->[0] and $max = $_->[0]
+			for @ret;
+		$norm /= $max;
+		$_->[0] *= $norm for @ret;
+	};
+
 	return \@ret;
 };
 
