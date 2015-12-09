@@ -22,6 +22,7 @@ my %param;
 my %cut;
 GetOptions (
 	"f|format=s" => \$format,
+	"summary" => sub { $format = default_format() },
 	"n" => \$noread,
 	"p|read-pairs" => \$pairs,
 	"l|load=s" => \@load,
@@ -60,10 +61,23 @@ Options may include:
     Options are the same as in printf %f, i.e. %[-][+][0][n].[n]
     X may be:
     m - min   M - max   a - average   d - standard deviation   n - count
+    s - skeweness   k - kurtosis
     p(n) - nth percentile   q(n) - nth quartile
     P(n) - probability of value being less than n
+    e(n) - nth central momEnt   E(n) - nth standardized momEnt
 USAGE
 	exit 1;
+};
+
+# This is actually a constant
+sub default_format {
+	return <<"SUMMARY"
+count : %15.0n;      min/max: %m .. %M
+median: %15p(50); mean/std_dev: %a +- %d
+     skewness: %s; kurtosis: %k
+SUMMARY
+	. join "", map { sprintf ("%5.1f%%%%: %%15p(%0.1f)\n", $_, $_) }
+		 0.5, 1, 5, 10, 25, 50, 75, 90, 95, 99.5;
 };
 
 # configure storage, load data
@@ -113,16 +127,22 @@ sub format_summary {
 	my ($stat, $format) = @_;
 
 	my %format = (
+		# percent literal
+		'%' => '%',
 		# placeholders without parameters
 		n => 'count',
 		m => 'min',
 		M => 'max',
 		a => 'mean',
 		d => 'std_dev',
+		s => 'skewness',
+		k => 'kurtosis',
 		# placeholders with 1 parameter
 		q => 'quantile?',
 		p => 'percentile?',
 		P => 'cdf?',
+		e => 'central_moment?',
+		E => 'std_moment?',
 	);
 	my $re_format = join "|", keys %format;
 	$re_format = qr((?:$re_format));
@@ -130,13 +150,16 @@ sub format_summary {
 	# FIXME this accepts %m(5), then dies - UGLY
 	$format =~ s/\\n/\n/g;
 	$format =~ s <%([0-9.\-+ #]*)($re_format)(?:\(($re_num)?\)){0,1}>
-		< sprintf "%$1f", _dispatch($stat, $format{$2}, $3) >ge;
+		< _dispatch($stat, $format{$2}, $1, $3) >ge;
 	return $format;
 };
 
 sub _dispatch {
-	my ($obj, $method, $arg) = @_;
+	my ($obj, $method, $float, $arg) = @_;
 
+	if ($method !~ /^[a-z_]/) {
+		return $method;
+	};
 	if ($method =~ s/\?$//) {
 		die "Missing argument in method $method" if !defined $arg;
 	} else {
@@ -147,7 +170,7 @@ sub _dispatch {
 	# work around S::D::Full's convention that "-inf == undef"
 	$result = -9**9**9
 		if ($method eq 'percentile' and !defined $result);
-	return $result;
+	return sprintf "%${float}f", $result;
 };
 
 sub load_file {
