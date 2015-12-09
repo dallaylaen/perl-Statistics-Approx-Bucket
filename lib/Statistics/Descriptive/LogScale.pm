@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0803;
+our $VERSION = 0.0804;
 
 =head1 SYNOPSIS
 
@@ -170,14 +170,16 @@ so that borders of linear and logarithmic bins fit nicely.
 Used for cloning.
 See C<add_data_hash()>.
 
-=item * linear_thresh - absolute value threshold below which everything is
+=item * zero_thresh - absolute value threshold below which everything is
 considered zero.
-DEPRECATED, C<linear_width> and C<linear_threshold> override this if given.
+DEPRECATED, C<linear_width> and C<linear_thresh> override this if given.
 
 =back
 
 =cut
 
+my @new_keys = qw( base linear_thresh linear_width zero_thresh data );
+	# TODO Throw if extra options given?
 sub new {
 	my $class = shift;
 	my %opt = @_;
@@ -839,21 +841,45 @@ sub add_data_hash {
 	$self;
 };
 
-=head2 get_data_hash
+=head2 get_data_hash( %options )
 
 Return distribution hashref {value => number of occurances}.
 
 This is inverse of add_data_hash.
 
+Options may include:
+
+=over
+
+=item * min - ignore values below this. (See find_boundaries)
+
+=item * max - ignore values above this. (See find_boundaries)
+
+=item * ltrim - ignore this % of values on lower end. (See find_boundaries)
+
+=item * rtrim - ignore this % of values on upper end. (See find_boundaries)
+
+=back
+
 =cut
 
 sub get_data_hash {
-	my $self = shift;
+	my ($self, %opt) = @_;
 
-	# shallow copy of data
-	my $hash = {%{ $self->{data} }};
-	return $hash;
+	# shallow copy of data if no options given
+	return {%{ $self->{data} }} unless %opt;
 
+	my ($min, $max) = $self->find_boundaries( %opt );
+
+	my $data = $self->{data};
+	my %hash;
+	foreach (keys %$data ) {
+		$_ < $min and next;
+		$_ > $max and next;
+		$hash{$_} = $data->{$_};
+	};
+
+	return \%hash;
 };
 
 =head2 TO_JSON()
@@ -869,16 +895,35 @@ B<NOTE> This module DOES NOT require JSON::XS or serialize to JSON.
 It just deals with data.
 Use C<JSON::XS>, C<YAML::XS>, C<Data::Dumper> or any serializer of choice.
 
-=head2 clone()
+    my $raw_data = $stat->TO_JSON;
+    Statistics::Descriptive::LogScale->new( %$raw_data );
+
+Would generate an exact copy of C<$stat> object
+(provided it's S::D::L and not a subclass).
+
+=head2 clone( [ %options ] )
 
 Copy constructor - returns copy of an existing object.
 Cache is not preserved.
 
+Constructor options may be given to override existing data. See new().
+
+Trim options may be given to get partial data. See get_data_hash().
+
 =cut
 
 sub clone {
-	my $self = shift;
-	return (ref $self)->new( %{ $self->TO_JSON } );
+	my ($self, %opt) = @_;
+
+	my $raw = $self->TO_JSON;
+	if (%opt) {
+		$raw->{data} = $self->get_data_hash( %opt )
+			unless exists $opt{data};
+		exists $opt{$_} and $raw->{$_} = $opt{$_}
+			for @new_keys;
+	};
+
+	return (ref $self)->new( %$raw );
 };
 
 sub TO_JSON {
