@@ -3,9 +3,6 @@
 **Statistics::Descriptive::LogScale** - Memory-efficient approximate
 univariate statistical analysis module.
 
-This module can be used in place of  _Statistics::Descriptive::Full_
-given that exact values and remembering incoming data order are not required.
-
 # FEATURES
 
 * Efficiency - can handle very large samples without loading them into memory,
@@ -68,8 +65,8 @@ such that upper boundary/lower boundary ratio is constant across all bins.
 This allows to store data spanning orders of magnitude
 while maintaining a guaranteed relative precision.
 
-For instance, the default bin ratio is 10^1/232, which is approximately 1%
-and allows sorting numbers from 1 to 1000000 into like 1400 bins.
+For instance, the default bin ratio is `10^1/232`, which is approximately `1%`
+and allows sorting numbers from `1` to `1000000` into like `1400` bins.
 
 Additionally, linear approximation can be used around zero to save memory.
 The incoming data is rarely absolutely precise anyway.
