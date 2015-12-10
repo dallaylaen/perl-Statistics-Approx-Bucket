@@ -3,17 +3,26 @@
 **Statistics::Descriptive::LogScale** - Memory-efficient approximate
 univariate statistical analysis module.
 
-It allows to study various properties of a one-dimentional statistical sample:
-mean, variance, percentiles, moments of arbitrary power,
-cumulative distribution function (i.e. probability to hit specific range) etc.
-
-The whole sample doesn't have to be loaded into memory,
-at a cost of a certain predictable relative error.
-(see DATA MODEL below).
-This also allows for storing the data efficiently for future analysis.
-
 This module can be used in place of  _Statistics::Descriptive::Full_
 given that exact values and remembering incoming data order are not required.
+
+# FEATURES
+
+* Efficiency - can handle very large samples without loading them into memory,
+at the cost of predictable small relative error (see DATA MODEL below);
+
+* Power - can report all kind of values - mean, variance, percentiles,
+moments of any power, probability to hit specific interval,
+even integrate arbitrary function over the sample;
+
+* Persistence - can save, load, and combine data sets, as well as cut
+part of the sample within given range;
+
+* Visualization - can output data in form of a histogram array to draw
+pictures;
+
+* Compatibility - can be used in place of  _Statistics::Descriptive::Full_
+whenever retaining exact initial data points isn't required.
 
 # SINOPSIS
 
@@ -94,10 +103,17 @@ as well as gradually "forget" old data.
 Ideally, it should become *the* tool for preliminary analysis and drawing
 funny pictures until one realises they need serious stuff like R.
 
-# BUGS AND CAVEATS
+# BUGS AND LIMITATIONS
 
 This software is still under development and has not experienced enough
 usage, so there may be bugs.
+
+Mode calculation algorithm only works well for discrete distributions,
+and needs improvement.
+
+Data inspection methods are wanted.
+
+C and Javascript translations are wanted. XS would be a boon.
 
 The error introduced by approximation have not been studied well
 enough yet. It may turn out that tweaking the model could win some precision.
