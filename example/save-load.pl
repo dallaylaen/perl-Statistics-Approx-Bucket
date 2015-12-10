@@ -106,6 +106,7 @@ unless ($noread) {
 	};
 };
 
+# trim data, if needed
 if (%cut) {
 	$stat = $stat->clone( %cut );
 };
@@ -116,8 +117,8 @@ if (defined $format) {
 	print format_summary( $stat, $format );
 };
 
-# save data. Ignore if no data was read.
-if (defined $save && !$noread) {
+# save data.
+if (defined $save) {
 	save_file($stat, $save);
 };
 
