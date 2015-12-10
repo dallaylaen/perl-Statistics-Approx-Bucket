@@ -11,11 +11,11 @@ descriptive statistics class.
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-our $VERSION = 0.0807;
+our $VERSION = 0.09;
 
 =head1 SYNOPSIS
 

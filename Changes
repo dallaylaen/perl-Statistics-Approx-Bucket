@@ -1,7 +1,18 @@
 Revision history for Statistics-Descriptive-LogScale
 
-0.08    Tue May 12 2015
+0.09    Fri Dec 11 2015
+	DOC Improved documentation a bit
+	API Add noize_thresh clone arg to remove small bins
+	API Add clone() args (min, max, data, etc)
+	API histogram(): add normalize_to=nn param to simplify pictures
+	BUG Rewrite add_data_hash to handle -Inf properly (as in 'forget this data')
+	BUG Fix stdev/variance calculation, fix pod
+	TST save-load.pl: read pairs; min|max|trim|noize; - for STDIN/OUT; summary
+	TST Use proper RE for numbers across examples
+	TST Rewrite example/gen-sample.pl: arbitrary formulas + some std. distros
+	TST Remove unneeded dependency on Test::Exception
 
+0.08    Tue May 12 2015
 	API Change default base 10**1/48 (~5%) => 10**1/232 (~1%);
 	API Remove broken mode() method, replace with a naive one
 	    that at least works for discrete distributions;
