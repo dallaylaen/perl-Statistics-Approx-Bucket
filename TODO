@@ -9,6 +9,8 @@ Features TBD:
 * 0.08    add infinity abs threshold to disregard BIG values
 * 0.08    add abs($x - mean)**power (who needs it?)
 * 0.08    TST metatest: i.e. analyze several samples, compare results to past.
+* 0.08    discarding unrepresentative data (small bin counts, far from others)
+* 0.08    add antialiasing to histogram
 
 Cleanup:
 

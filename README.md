@@ -128,6 +128,19 @@ Please, report bugs there, if you can. Alternatively,
 [CPAN RT](http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Descriptive-LogScale)
 is at your service.
 
+# ACKNOLEDGEMENTS
+
+This module was inspired by a talk that Andrew Aksyonoff, author of
+[Sphinx search software](http://sphinxsearch.com/),
+has given at HighLoad++ conference in Moscow, 2012.
+
+[Statistics::Descriptive::Full](https://metacpan.org/pod/Statistics::Descriptive::Full) 
+was and is used as reference when in doubt.
+Several code snippets were shamelessly stolen from there.
+
+`linear_width` and `linear_threshold` parameter names were suggested by
+[CountZero](http://perlmonks.org/?node=countzero) from http://perlmonks.org
+
 # COPYRIGHT AND LICENSE
 
 Copyright (C) 2013-2015 Konstantin S. Uvarin
