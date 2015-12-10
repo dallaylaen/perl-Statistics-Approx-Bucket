@@ -32,6 +32,7 @@ GetOptions (
 	"max=s" => \$cut{max},
 	"ltrim=s" => \$cut{ltrim},
 	"utrim=s" => \$cut{utrim},
+	"noize=s" => \$cut{noize_thresh},
 	"b|base|log-base=s" => \$param{base},
 	"w|width|linear-width=s" => \$param{linear_width},
 	"help" => \&usage,
@@ -55,6 +56,7 @@ Options may include:
     -w <n> - minimal bin width in storage. If given, -l only loads data points.
     --min , --max - trim data before processing.
     --ltrim, --utrim - trim that % of data from lower/upper end.
+    --noize - remove bins with counts less than that.
     Summary format:
     -f <printf-like expr> - print summary
     The expression MAY contain placeholders in form %<options><X>(<n>)

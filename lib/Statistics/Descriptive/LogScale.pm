@@ -15,7 +15,7 @@ Version 0.08
 
 =cut
 
-our $VERSION = 0.0806;
+our $VERSION = 0.0807;
 
 =head1 SYNOPSIS
 
@@ -859,6 +859,8 @@ Options may include:
 
 =item * rtrim - ignore this % of values on upper end. (See find_boundaries)
 
+=item * noise_thresh - strip bins with count below this.
+
 =back
 
 =cut
@@ -870,12 +872,14 @@ sub get_data_hash {
 	return {%{ $self->{data} }} unless %opt;
 
 	my ($min, $max) = $self->find_boundaries( %opt );
+	my $noize = $opt{noize_thresh} || 0;
 
 	my $data = $self->{data};
 	my %hash;
 	foreach (keys %$data ) {
 		$_ < $min and next;
 		$_ > $max and next;
+		$data->{$_} < $noize and next;
 		$hash{$_} = $data->{$_};
 	};
 
