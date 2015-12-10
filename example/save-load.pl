@@ -176,8 +176,13 @@ sub _dispatch {
 sub load_file {
 	my ($stat, $file) = @_;
 
-	open (my $fd, "<", $file)
-		or die "Failed to r-open $file: $!";
+	my $fd;
+	if ($file eq '-') {
+		$fd = \*STDIN;
+	} else {
+		open ($fd, "<", $file)
+			or die "Failed to r-open $file: $!";
+	};
 	local $/;
 	defined (my $js = <$fd>)
 		or die "Failed to read from $file: $!";
@@ -197,8 +202,13 @@ sub load_file {
 sub save_file {
 	my ($stat, $file) = @_;
 
-	open (my $fd, ">", $file)
-		or die "Failed to w-open $file: $!";
+	my $fd;
+	if ($file eq '-') {
+		$fd = \*STDOUT;
+	} else {
+		open ($fd, ">", $file)
+			or die "Failed to w-open $file: $!";
+	};
 	local $\;
 	print $fd encode_json($stat->TO_JSON)
 		or die "Failed to write to $file: $!";

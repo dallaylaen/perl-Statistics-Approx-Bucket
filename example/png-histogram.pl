@@ -63,8 +63,14 @@ my $stat;
 if (defined $load) {
 	eval { require JSON::XS; 1 }
 		or die "JSON::XS is required for --load option to work\n";
+	my $fd;
+	if ($load eq '-') {
+		$fd = \*STDIN;
+	} else {
+		open (my $fd, "<", $load)
+			or die "Failed to r-open $load: $!";
+	};
 	local $/;
-	open (my $fd, "<", $load) or die "Failed to r-open $load: $!";
 	defined (my $json = <$fd>) or die "Failed to read from $load: $!";
 	close $fd;
 	my $raw = JSON::XS::decode_json($json);
