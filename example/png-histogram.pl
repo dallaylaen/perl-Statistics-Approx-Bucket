@@ -67,7 +67,7 @@ if (defined $load) {
 	if ($load eq '-') {
 		$fd = \*STDIN;
 	} else {
-		open (my $fd, "<", $load)
+		open ($fd, "<", $load)
 			or die "Failed to r-open $load: $!";
 	};
 	local $/;
@@ -100,16 +100,24 @@ $gd->clear;
 
 # draw scale
 my $scale = 10;
+$gd->fgcolor( 'darkred' );
 foreach (1 .. ($scale-1)) {
-	$gd->fgcolor( 'blue' );
 	$gd->line( $width * ($_/$scale), 0, $width * ($_/$scale), $height );
 };
 
-# plot data
+# Determine some colorful features
 my $i=0;
+my @colorlist = qw(darkcyan orange darkcyan orange);
+my @switch    = map { $stat->percentile($_) } 25,50,75,100;
+my $colornum  = 0;
+
+# plot!
 foreach (@$hist) {
-	$gd->fgcolor( 'orange');
+	$gd->fgcolor( $colorlist[$colornum] );
 	$gd->line($i, $height, $i, $height*(1-$_->[0]));
+	if ($_->[2] > $switch[$colornum] ) {
+		$colornum++;
+	};
 	$i++;
 };
 
@@ -119,7 +127,7 @@ my $max = $hist->[-1][2];
 my $range = $max - $min;
 
 foreach (0 .. ($scale-1)) {
-	$gd->fgcolor( 'blue' );
+	$gd->fgcolor( 'darkred' );
 	$gd->moveTo( $width * ($_/$scale) + 2, 10 );
 	$gd->fontsize( 8 );
 	$gd->font( "Times" );
