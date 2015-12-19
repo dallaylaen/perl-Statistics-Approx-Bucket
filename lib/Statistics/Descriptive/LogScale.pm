@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.09;
+our $VERSION = 0.0901;
 
 =head1 SYNOPSIS
 
@@ -166,6 +166,14 @@ However, user may want to specify both in some cases.
 B<NOTE> Actual value may be less (by no more than a factor of C<base>)
 so that borders of linear and logarithmic bins fit nicely.
 
+=item * only_linear = 1 (B<EXPERIMENTAL>) -
+throw away log approximation and become a discrete statistics
+class with fixed precision.
+C<linear_width> must be given in this case.
+
+B<NOTE> This obviously kills memory efficiency, unless one knows beforehand
+that all values come from a finite pool.
+
 =item * data - hashref with C<{ value => weight }> for initializing data.
 Used for cloning.
 See C<add_data_hash()>.
@@ -178,11 +186,19 @@ DEPRECATED, C<linear_width> and C<linear_thresh> override this if given.
 
 =cut
 
-my @new_keys = qw( base linear_thresh linear_width zero_thresh data );
+my @new_keys = qw( base linear_thresh linear_width zero_thresh data only_linear );
 	# TODO Throw if extra options given?
 sub new {
 	my $class = shift;
 	my %opt = @_;
+
+	# First, check for only_linear option
+	if ($opt{only_linear}) {
+		$opt{linear_width}
+			or croak "only_linear option given, but no linear width";
+		$opt{only_linear} = $opt{linear_width};
+		delete $opt{$_} for qw(linear_width base linear_thresh zero_thresh);
+	};
 
 	# base for logarithmic bins, sane default: +-1%, exact decimal powers
 	# UGLY HACK number->string->number to avoid
@@ -229,6 +245,11 @@ sub new {
 		my $n_linear = ceil(2 * $self->{linear_thresh} / abs($linear_width));
 		$n_linear++ unless $n_linear % 2;
 		$self->{linear_width} = (2 * $self->{linear_thresh} / $n_linear);
+	};
+
+	if ($opt{only_linear}) {
+		$self->{linear_width} = $opt{only_linear};
+		$self->{linear_thresh} = $INF;
 	};
 
 	$self->clear;
