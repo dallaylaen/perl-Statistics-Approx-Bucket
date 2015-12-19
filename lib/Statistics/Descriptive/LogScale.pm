@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.0901;
+our $VERSION = 0.0902;
 
 =head1 SYNOPSIS
 
@@ -131,7 +131,7 @@ use POSIX qw(floor ceil);
 # Fields are NOT used internally for now, so this is just a declaration
 use fields qw(
 	data count
-	linear_width base logbase floor linear_thresh logfloor
+	linear_width base logbase floor linear_thresh only_linear logfloor
 	cache
 );
 
@@ -250,6 +250,7 @@ sub new {
 	if ($opt{only_linear}) {
 		$self->{linear_width} = $opt{only_linear};
 		$self->{linear_thresh} = $INF;
+		$self->{only_linear} = 1;
 	};
 
 	$self->clear;
@@ -961,6 +962,7 @@ sub TO_JSON {
 		base => $self->{base},
 		linear_width => $self->{linear_width},
 		linear_thresh => $self->{linear_thresh} * ($self->{base}+9)/10,
+		only_linear => $self->{only_linear},
 		data => $self->get_data_hash,
 	};
 };

@@ -17,4 +17,8 @@ is_deeply($stat->get_data_hash
 
 is ($stat->mean, 10003, "stats work as expected");
 
+$stat->add_data( ); # burn cache
+	# TODO replace w/smth else if add_data checks for empty data
+is_deeply( $stat->clone, $stat, "Clone works with new param" );
+
 done_testing;
