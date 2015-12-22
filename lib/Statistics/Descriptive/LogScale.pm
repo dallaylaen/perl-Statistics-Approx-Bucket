@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.0902;
+our $VERSION = 0.0904;
 
 =head1 SYNOPSIS
 
@@ -186,8 +186,9 @@ DEPRECATED, C<linear_width> and C<linear_thresh> override this if given.
 
 =cut
 
-my @new_keys = qw( base linear_thresh linear_width zero_thresh data only_linear );
+my @new_keys = qw( base linear_width linear_thresh data zero_thresh only_linear );
 	# TODO Throw if extra options given?
+	# TODO Check args better
 sub new {
 	my $class = shift;
 	my %opt = @_;
@@ -425,6 +426,8 @@ sub variance {
 =head2 standard_deviation( $correction )
 
 =head2 std_dev
+
+=head2 stdev
 
 Return standard deviation, i.e. square root of variance.
 
@@ -668,6 +671,23 @@ sub std_moment {
 	my $dev = $self->std_dev;
 	return $self->sum_of(sub{ ($_[0] - $mean) ** $n })
 		/ ( $dev**$n * $self->{count} );
+};
+
+=head2 abs_moment( $power, [$offset] )
+
+Return $n-th moment of absolute value, that is, E(|x - offset|^$n).
+Default value for offset if E(x).
+
+B<NOTE> Experimental. Not present in Statistics::Descriptive::Full.
+
+=cut
+
+sub abs_moment {
+	my ($self, $power, $offset) = @_;
+
+	$offset = $self->mean unless defined $offset;
+	return $self->sum_of(sub{ return abs($_[0] - $offset) ** $power })
+		 / $self->{count};
 };
 
 =head2 mode
@@ -1239,11 +1259,13 @@ sub _memoize_method {
 	}
 	: sub {
 		my $self = shift;
-		my $arg = shift;
-		$arg = '' unless defined $arg;
+		my $arg = do {
+			no warnings 'uninitialized'; ## no critic
+			join ':', @_;
+		};
 
 		if (!exists $self->{cache}{"$name:$arg"}) {
-			$self->{cache}{"$name:$arg"} = $orig_code->($self, $arg);
+			$self->{cache}{"$name:$arg"} = $orig_code->($self, @_);
 		};
 		return $self->{cache}{"$name:$arg"};
 	};
@@ -1260,7 +1282,8 @@ foreach ( qw(sum sumsq mean min max mode) ) {
 };
 
 # Memoize methods with 1 argument
-foreach (qw(quantile central_moment std_moment standard_deviation variance)) {
+foreach (qw(quantile central_moment std_moment abs_moment standard_deviation
+	variance)) {
 	__PACKAGE__->_memoize_method($_, 1);
 };
 
@@ -1268,6 +1291,7 @@ foreach (qw(quantile central_moment std_moment standard_deviation variance)) {
 {
 	no warnings 'once'; ## no critic
 	*std_dev = \&standard_deviation;
+	*stdev = \&standard_deviation;
 };
 
 # Get number of values below $x
