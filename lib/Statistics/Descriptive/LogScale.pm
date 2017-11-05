@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.0903;
+our $VERSION = 0.0904;
 
 =head1 SYNOPSIS
 
@@ -1288,7 +1288,7 @@ sub _format_dispatch {
 	my ($obj, $method, $float, $arg, $extra) = @_;
 
     # Handle % escapes
-	if ($method !~ /^[a-z_]/) {
+	if ($method !~ /^[a-zA-Z]/) {
 		return $method;
 	};
     # Handle printf built-in formats
