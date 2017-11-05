@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.09;
+our $VERSION = 0.0901;
 
 =head1 SYNOPSIS
 
@@ -135,8 +135,10 @@ use fields qw(
 	cache
 );
 
+# Some internal constants
 # This is for infinite portability^W^W portable infinity
 my $INF = 9**9**9;
+my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 
 =head2 new( %options )
 
@@ -1182,6 +1184,60 @@ sub find_boundaries {
 	};
 
 	return ($min, $max);
+};
+
+=head2 format( "printf-like expression" )
+
+=cut
+
+sub format {
+	my ($self, $format) = @_;
+
+	my %format = (
+		# percent literal
+		'%' => '%',
+		# placeholders without parameters
+		n => 'count',
+		m => 'min',
+		M => 'max',
+		a => 'mean',
+		d => 'std_dev',
+		S => 'skewness',
+		K => 'kurtosis',
+		# placeholders with 1 parameter
+		q => 'quantile?',
+		p => 'percentile?',
+		P => 'cdf?',
+		e => 'central_moment?',
+		E => 'std_moment?',
+	);
+	my $re_format = join "|", keys %format;
+	$re_format = qr((?:$re_format));
+
+	# FIXME this accepts %m(5), then dies - UGLY
+	$format =~ s/\\n/\n/g;
+	$format =~ s <%([0-9.\-+ #]*)($re_format)(?:\(($re_num)?\)){0,1}>
+		< _format_dispatch($self, $format{$2}, $1, $3) >ge;
+	return $format;
+};
+
+sub _format_dispatch {
+	my ($obj, $method, $float, $arg) = @_;
+
+	if ($method !~ /^[a-z_]/) {
+		return $method;
+	};
+	if ($method =~ s/\?$//) {
+		die "Missing argument in method $method" if !defined $arg;
+	} else {
+		die "Extra argument in method $method" if defined $arg;
+	};
+	my $result = $obj->$method($arg);
+
+	# work around S::D::Full's convention that "-inf == undef"
+	$result = -9**9**9
+		if ($method eq 'percentile' and !defined $result);
+	return sprintf "%${float}f", $result;
 };
 
 ################################################################
