@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.0902;
+our $VERSION = 0.0903;
 
 =head1 SYNOPSIS
 
@@ -1186,7 +1186,59 @@ sub find_boundaries {
 	return ($min, $max);
 };
 
-=head2 format( "printf-like expression" )
+=head2 format( "printf-like expression", ... )
+
+Returns a summary as requested by format string.
+Just as with printf and sprintf, a placeholder starts with a C<%>,
+followed by formatting options and a
+
+The following placeholders are supported:
+
+=over
+
+=item * % - a literal %
+
+=item * s, f, g - a normal printf acting on an extra argument.
+The number of extra arguments MUST match the number of such placeholders,
+or this function dies.
+
+=item * n - count;
+
+=item * m - min;
+
+=item * M - max,
+
+=item * a - mean,
+
+=item * d - standard deviation,
+
+=item * S - skewness,
+
+=item * K - kurtosis,
+
+=item * q(x) - x-th quantile (requires argument),
+
+=item * p(x) - x-th percentile (requires argument),
+
+=item * P(x) - cdf - the inferred cumulative distribution function (x)
+(requires argument),
+
+=item * e(n) - central_moment - central moment of n-th power
+(requires argument),
+
+=item * E(n) - std_moment - standard moment of n-th power (requires argument),
+
+=back
+
+For example,
+
+    $stat->format( "99%% results lie between %p(0.5) and %p(99.5)" );
+
+Or
+
+    for( my $i = 0; $i < @stats; $i++ ) {
+        print $stats[$i]->format( "%s-th average value is %a +- %d", $i );
+    };
 
 =cut
 
@@ -1212,7 +1264,6 @@ my %format = (
 my %printf = (
     s => 1,
     f => 1,
-    d => 1,
     g => 1,
 );
 
