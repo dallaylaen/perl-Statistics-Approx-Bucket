@@ -1,5 +1,8 @@
 Revision history for Statistics-Descriptive-LogScale
 
+0.10    Sun Nov 5 2017
+    API Added a printf-like format() method
+
 0.09    Fri Dec 11 2015
 	DOC Improved documentation a bit
 	API Add noize_thresh clone arg to remove small bins
