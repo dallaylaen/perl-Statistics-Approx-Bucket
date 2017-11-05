@@ -15,7 +15,7 @@ Version 0.09
 
 =cut
 
-our $VERSION = 0.0901;
+our $VERSION = 0.0902;
 
 =head1 SYNOPSIS
 
@@ -1190,43 +1190,65 @@ sub find_boundaries {
 
 =cut
 
-sub format {
-	my ($self, $format) = @_;
+my %format = (
+    # percent literal
+    '%' => '%',
+    # placeholders without parameters
+    n => 'count',
+    m => 'min',
+    M => 'max',
+    a => 'mean',
+    d => 'std_dev',
+    S => 'skewness',
+    K => 'kurtosis',
+    # placeholders with 1 parameter
+    q => 'quantile?',
+    p => 'percentile?',
+    P => 'cdf?',
+    e => 'central_moment?',
+    E => 'std_moment?',
+);
 
-	my %format = (
-		# percent literal
-		'%' => '%',
-		# placeholders without parameters
-		n => 'count',
-		m => 'min',
-		M => 'max',
-		a => 'mean',
-		d => 'std_dev',
-		S => 'skewness',
-		K => 'kurtosis',
-		# placeholders with 1 parameter
-		q => 'quantile?',
-		p => 'percentile?',
-		P => 'cdf?',
-		e => 'central_moment?',
-		E => 'std_moment?',
-	);
-	my $re_format = join "|", keys %format;
-	$re_format = qr((?:$re_format));
+my %printf = (
+    s => 1,
+    f => 1,
+    d => 1,
+    g => 1,
+);
+
+my $re_format = join "|", keys %format, keys %printf;
+$re_format = qr((?:$re_format));
+
+sub format {
+	my ($self, $format, @extra) = @_;
+
 
 	# FIXME this accepts %m(5), then dies - UGLY
-	$format =~ s/\\n/\n/g;
+    # TODO rewrite this as a giant sprintf... one day...
 	$format =~ s <%([0-9.\-+ #]*)($re_format)(?:\(($re_num)?\)){0,1}>
-		< _format_dispatch($self, $format{$2}, $1, $3) >ge;
+		< _format_dispatch($self, $2, $1, $3, \@extra) >ge;
+
+    croak __PACKAGE__.": Extra arguments in format()"
+        if @extra;
 	return $format;
 };
 
 sub _format_dispatch {
-	my ($obj, $method, $float, $arg) = @_;
+	my ($obj, $method, $float, $arg, $extra) = @_;
 
+    # Handle % escapes
 	if ($method !~ /^[a-z_]/) {
 		return $method;
 	};
+    # Handle printf built-in formats
+    if (!$format{$method}) {
+        croak __PACKAGE__.": Not enough arguments in format()"
+            unless @$extra;
+        return sprintf "%${float}${method}", shift @$extra;
+    };
+
+    # Now we know it's LogScale's own method
+    $method = $format{$method};
 	if ($method =~ s/\?$//) {
 		die "Missing argument in method $method" if !defined $arg;
 	} else {
