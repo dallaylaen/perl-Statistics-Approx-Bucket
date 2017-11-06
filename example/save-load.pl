@@ -114,6 +114,7 @@ if (%cut) {
 # print summary
 # TODO draw image as well
 if (defined $format) {
+    $format =~ s#\\n#\n#g;
 	print $stat->format( $format );
 };
 
