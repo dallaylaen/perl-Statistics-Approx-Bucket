@@ -11,11 +11,11 @@ descriptive statistics class.
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 =cut
 
-our $VERSION = 0.0904;
+our $VERSION = 0.10;
 
 =head1 SYNOPSIS
 
@@ -135,8 +135,10 @@ use fields qw(
 	cache
 );
 
+# Some internal constants
 # This is for infinite portability^W^W portable infinity
 my $INF = 9**9**9;
+my $re_num = qr/(?:[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/;
 
 =head2 new( %options )
 
@@ -1225,6 +1227,133 @@ sub find_boundaries {
 	};
 
 	return ($min, $max);
+};
+
+=head2 format( "printf-like expression", ... )
+
+Returns a summary as requested by format string.
+Just as with printf and sprintf, a placeholder starts with a C<%>,
+followed by formatting options and a
+
+The following placeholders are supported:
+
+=over
+
+=item * % - a literal %
+
+=item * s, f, g - a normal printf acting on an extra argument.
+The number of extra arguments MUST match the number of such placeholders,
+or this function dies.
+
+=item * n - count;
+
+=item * m - min;
+
+=item * M - max,
+
+=item * a - mean,
+
+=item * d - standard deviation,
+
+=item * S - skewness,
+
+=item * K - kurtosis,
+
+=item * q(x) - x-th quantile (requires argument),
+
+=item * p(x) - x-th percentile (requires argument),
+
+=item * P(x) - cdf - the inferred cumulative distribution function (x)
+(requires argument),
+
+=item * e(n) - central_moment - central moment of n-th power
+(requires argument),
+
+=item * E(n) - std_moment - standard moment of n-th power (requires argument),
+
+=back
+
+For example,
+
+    $stat->format( "99%% results lie between %p(0.5) and %p(99.5)" );
+
+Or
+
+    for( my $i = 0; $i < @stats; $i++ ) {
+        print $stats[$i]->format( "%s-th average value is %a +- %d", $i );
+    };
+
+=cut
+
+my %format = (
+    # percent literal
+    '%' => '%',
+    # placeholders without parameters
+    n => 'count',
+    m => 'min',
+    M => 'max',
+    a => 'mean',
+    d => 'std_dev',
+    S => 'skewness',
+    K => 'kurtosis',
+    # placeholders with 1 parameter
+    q => 'quantile?',
+    p => 'percentile?',
+    P => 'cdf?',
+    e => 'central_moment?',
+    E => 'std_moment?',
+);
+
+my %printf = (
+    s => 1,
+    f => 1,
+    g => 1,
+);
+
+my $re_format = join "|", keys %format, keys %printf;
+$re_format = qr((?:$re_format));
+
+sub format {
+	my ($self, $format, @extra) = @_;
+
+
+	# FIXME this accepts %m(5), then dies - UGLY
+    # TODO rewrite this as a giant sprintf... one day...
+	$format =~ s <%([0-9.\-+ #]*)($re_format)(?:\(($re_num)?\)){0,1}>
+		< _format_dispatch($self, $2, $1, $3, \@extra) >ge;
+
+    croak __PACKAGE__.": Extra arguments in format()"
+        if @extra;
+	return $format;
+};
+
+sub _format_dispatch {
+	my ($obj, $method, $float, $arg, $extra) = @_;
+
+    # Handle % escapes
+	if ($method !~ /^[a-zA-Z]/) {
+		return $method;
+	};
+    # Handle printf built-in formats
+    if (!$format{$method}) {
+        croak __PACKAGE__.": Not enough arguments in format()"
+            unless @$extra;
+        return sprintf "%${float}${method}", shift @$extra;
+    };
+
+    # Now we know it's LogScale's own method
+    $method = $format{$method};
+	if ($method =~ s/\?$//) {
+		die "Missing argument in method $method" if !defined $arg;
+	} else {
+		die "Extra argument in method $method" if defined $arg;
+	};
+	my $result = $obj->$method($arg);
+
+	# work around S::D::Full's convention that "-inf == undef"
+	$result = -9**9**9
+		if ($method eq 'percentile' and !defined $result);
+	return sprintf "%${float}f", $result;
 };
 
 ################################################################
