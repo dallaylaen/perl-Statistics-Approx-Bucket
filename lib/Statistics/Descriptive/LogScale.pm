@@ -15,7 +15,7 @@ Version 0.10
 
 =cut
 
-our $VERSION = 0.10;
+our $VERSION = 0.1001;
 
 =head1 SYNOPSIS
 
@@ -677,8 +677,10 @@ sub std_moment {
 
 =head2 abs_moment( $power, [$offset] )
 
-Return $n-th moment of absolute value, that is, E(|x - offset|^$n).
+Return $n-th moment of absolute value, that is, C<E(|x - offset|^$n)>.
+
 Default value for offset if E(x).
+Power may be fractional.
 
 B<NOTE> Experimental. Not present in Statistics::Descriptive::Full.
 
@@ -690,6 +692,28 @@ sub abs_moment {
 	$offset = $self->mean unless defined $offset;
 	return $self->sum_of(sub{ return abs($_[0] - $offset) ** $power })
 		 / $self->{count};
+};
+
+=head2 std_abs_moment( $power, [$offset] )
+
+Returns standardized absolute moment - like above, but scaled
+down by a factor of to standard deviation to n-th power.
+
+That is, C<E(|x - offset|^$n) / E(|x - offset|^2)^($n/2)>
+
+Default value for offset if E(x).
+Power may be fractional.
+
+B<NOTE> Experimental. Not present in Statistics::Descriptive::Full.
+
+=cut
+
+sub std_abs_moment {
+    my ($self, $power, $offset) = @_;
+
+    return  $self->abs_moment($power, $offset)
+                /
+            ($self->abs_moment(2, $offset) ** ($power/2));
 };
 
 =head2 mode
