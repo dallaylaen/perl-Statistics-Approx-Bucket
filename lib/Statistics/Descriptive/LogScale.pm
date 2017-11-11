@@ -15,7 +15,7 @@ Version 0.10
 
 =cut
 
-our $VERSION = 0.1001;
+our $VERSION = 0.1002;
 
 =head1 SYNOPSIS
 
@@ -1295,6 +1295,8 @@ or this function dies.
 
 =item * E(n) - std_moment - standard moment of n-th power (requires argument),
 
+=item * A(n) - abs_moment - absolute moment of n-th power (requires argument).
+
 =back
 
 For example,
@@ -1326,6 +1328,7 @@ my %format = (
     P => 'cdf?',
     e => 'central_moment?',
     E => 'std_moment?',
+    A => 'abs_moment?',
 );
 
 my %printf = (
@@ -1339,7 +1342,6 @@ $re_format = qr((?:$re_format));
 
 sub format {
 	my ($self, $format, @extra) = @_;
-
 
 	# FIXME this accepts %m(5), then dies - UGLY
     # TODO rewrite this as a giant sprintf... one day...
