@@ -13,7 +13,8 @@ $stat->add_data( 1 .. 5 );
 is $stat->format( "%%" ), "%", "Format % escape";
 is $stat->format( "%1.1a" ), "3.0", "Format w/o arg";
 is $stat->format( "%1.0p(50)" ), "3", "Format with arg";
-is $stat->format( "%p(0)" ), sprintf("%d", -9**9**9), "-infinity = ".-9**9**9;
+is $stat->format( "%p(0)" ), sprintf("%f", -9**9**9)
+    , sprintf( "-infinity = %f", -9**9**9 );
 
 like $stat->format( "%5s = %a +- %d", "foo" )
     , qr/^  foo = \d(\.\d+)? \+- \d(\.\d+)?/
