@@ -22,6 +22,16 @@ WriteMakefile(
         'Test::More' => 0,
 	'Test::Number::Delta' => 0,
     },
+    META_MERGE => {
+        "meta-spec" => { version => 2 },
+        resources   => {
+            repository => {
+                type => 'git',
+                url => 'https://github.com/dallaylaen/perl-Statistics-Descriptive-LogScale.git',
+                web => 'https://github.com/dallaylaen/perl-Statistics-Descriptive-LogScale',
+            },
+        },
+    },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Statistics-Descriptive-LogScale-*' },
 );
